@@ -103,10 +103,49 @@ body {
 
 .hud-top {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 6px;
+    justify-content: center;
     padding-top: 6px;
+}
+
+.hud-top-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.hud-hp-bar-wrap {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 4px 14px;
+    border-radius: 12px;
+}
+
+.hud-order {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 7px 12px;
+    border-radius: 10px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.hp-hearts {
+    font-size: 14px;
+    color: #e53e3e;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+}
+
+.hp-hearts.hp-low {
+    animation: hp-pulse 0.4s ease-in-out infinite alternate;
+}
+
+.hp-hearts.hp-flash {
+    animation: hp-shake 0.3s ease-in-out;
+    color: #ff0000;
 }
 
 .hud-hp, .hud-order, .hud-score {
@@ -154,9 +193,15 @@ body {
     75% { transform: translateX(3px); }
 }
 
-.hud-orders-wrap {
+.hud-orders-float {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    top: calc(env(safe-area-inset-top, 10px) + 80px);
     display: flex;
-    gap: 6px;
+    gap: 8px;
+    pointer-events: none;
+    z-index: 11;
 }
 
 .hud-order.order-done {
@@ -196,38 +241,23 @@ body {
     border: 1.5px solid rgba(0,0,0,0.12);
 }
 
-.hud-score {
-    font-weight: 600;
-    font-size: 12px;
-    color: #666;
-}
-
-.hud-score span {
-    color: #2563eb;
-    font-size: 15px;
-    font-weight: 700;
-}
-
-.hud-score-area {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    min-width: 60px;
-}
+/* hud-score 已移除，分数改为 hud-score-num 居中显示 */
 
 .hud-score-num {
-    font-size: 18px;
+    font-size: 24px;
     font-weight: 800;
-    color: #2563eb;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 
 .hud-combo {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     color: transparent;
     min-height: 16px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     transition: color 0.2s;
 }

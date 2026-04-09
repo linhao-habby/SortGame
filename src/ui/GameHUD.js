@@ -23,16 +23,15 @@
             this.el.style.display = 'none';
             this.el.innerHTML = `
                 <div class="hud-top">
-                    <div class="hud-hp">
-                        <span class="hp-label">HP</span>
-                        <span class="hp-hearts" id="ui-hp-hearts"></span>
-                    </div>
-                    <div class="hud-orders-wrap" id="ui-orders-wrap"></div>
-                    <div class="hud-score-area">
+                    <div class="hud-top-center">
                         <div class="hud-score-num" id="ui-score">0</div>
+                        <div class="hud-hp-bar-wrap">
+                            <span class="hp-hearts" id="ui-hp-hearts"></span>
+                        </div>
                         <div class="hud-combo" id="ui-combo"></div>
                     </div>
                 </div>
+                <div class="hud-orders-float" id="ui-orders-wrap"></div>
                 <div class="hud-bottom">
                     <button class="btn-restart" id="ui-btn-restart">重来</button>
                 </div>
