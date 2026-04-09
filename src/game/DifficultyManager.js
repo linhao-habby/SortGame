@@ -93,7 +93,7 @@
             const addedSlots = [];
 
             // 计算需要新增的普通木槽数量
-            const currentNormalSlots = slots.filter(s => !s.isSafe).length;
+            const currentNormalSlots = slots.length;
             const targetSlotCount = newParams.slotCount;
 
             if (targetSlotCount > currentNormalSlots) {

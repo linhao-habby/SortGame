@@ -18,10 +18,10 @@
         }
 
         /**
-         * 获取普通木槽数量（不含安全槽）
+         * 获取木槽数量
          */
         getNormalSlotCount() {
-            return this.slots.filter(s => !s.isSafe).length;
+            return this.slots.length;
         }
 
         // ===== 棋盘初始化 =====
@@ -38,9 +38,6 @@
             for (let i = 0; i < slotCount; i++) {
                 this.slots.push(new Slot(i, capacity, false));
             }
-
-            const safeSlot = new Slot(slotCount, capacity, true);
-            this.slots.push(safeSlot);
 
             const fillableSlotCount = slotCount - emptySlots;
             const totalBlocks = fillableSlotCount * capacity;
@@ -206,8 +203,6 @@
             const overflowData = [];
 
             for (const slot of this.slots) {
-                if (slot.isSafe) continue;
-
                 const newColor = Math.floor(Math.random() * availableColorCount);
                 const newBlock = { color: newColor };
                 const overflow = slot.pushFromBottom(newBlock);
@@ -282,7 +277,7 @@
                 console.log(`  Order${i}: ${name} x${o.count} [${o.status}]`);
             }
             for (const slot of this.slots) {
-                const label = slot.isSafe ? '★' : ' ';
+                const label = ' ';
                 const blocks = slot.blocks.map(b => {
                     const c = GameConfig.COLORS[b.color];
                     return c ? c.name.charAt(0) : b.color;

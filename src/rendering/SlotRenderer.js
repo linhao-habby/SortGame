@@ -10,7 +10,6 @@
 
     // 木槽基色
     const SLOT_COLOR = [0.55, 0.35, 0.18]; // 棕色
-    const SAFE_SLOT_COLOR = [0.65, 0.50, 0.22]; // 金棕色
 
     class SlotRenderer {
         constructor(renderer) {
@@ -47,11 +46,11 @@
                 const model = MathUtils.translation(slotPos.x, slotPos.y + yOffset, 0);
 
                 // 颜色
-                const color = slot.isSafe ? SAFE_SLOT_COLOR : SLOT_COLOR;
+                const color = SLOT_COLOR;
 
                 // 标志
                 const selected = (gameState.selectedSlotIndex === si) ? 1 : 0;
-                const isSafe = slot.isSafe ? 1 : 0;
+                const isSafe = 0;
 
                 const offset = this.instanceCount * INSTANCE_FLOATS;
                 this.instanceData.set(model, offset);
