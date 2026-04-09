@@ -15,6 +15,9 @@
             this.selectedSlotIndex = null;
             this.status = 'playing';
             this.initialState = null;
+            this.score = 0;
+            this.combo = 0;
+            this.lastScoreGain = 0;
         }
 
         /**
@@ -28,6 +31,8 @@
 
         initBoard(params) {
             const { colorCount, slotCount, capacity, emptySlots } = params;
+            // initBlocks: 每个有色块的槽初始放几个，默认 = capacity（填满）
+            const blocksPerSlot = params.initBlocks || capacity;
             this.slots = [];
             this.hp = GameConfig.INITIAL_HP;
             this.completedOrders = 0;
@@ -40,13 +45,13 @@
             }
 
             const fillableSlotCount = slotCount - emptySlots;
-            const totalBlocks = fillableSlotCount * capacity;
+            const totalBlocks = fillableSlotCount * blocksPerSlot;
             const blockPool = this._generateBlockPool(totalBlocks, colorCount);
             this._shuffleArray(blockPool);
 
             let poolIndex = 0;
             for (let i = 0; i < fillableSlotCount; i++) {
-                for (let j = 0; j < capacity; j++) {
+                for (let j = 0; j < blocksPerSlot; j++) {
                     this.slots[i].blocks.push(blockPool[poolIndex++]);
                 }
             }

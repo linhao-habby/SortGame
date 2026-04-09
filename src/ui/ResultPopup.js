@@ -27,9 +27,10 @@
                     <h2 class="gameover-title" id="ui-go-title">游戏结束</h2>
                     <p class="gameover-reason" id="ui-go-reason"></p>
                     <div class="gameover-score-wrap">
-                        <span class="gameover-score-label">完成订单</span>
+                        <span class="gameover-score-label">得分</span>
                         <span class="gameover-score-num" id="ui-go-score">0</span>
                     </div>
+                    <div class="gameover-stats" id="ui-go-stats"></div>
                     <p class="gameover-best" id="ui-go-best"></p>
                     <div class="gameover-buttons">
                         <button class="btn-restart-big" id="ui-go-restart">重新开始</button>
@@ -43,6 +44,7 @@
             this._scoreEl = this.el.querySelector('#ui-go-score');
             this._reasonEl = this.el.querySelector('#ui-go-reason');
             this._bestEl = this.el.querySelector('#ui-go-best');
+            this._statsEl = this.el.querySelector('#ui-go-stats');
 
             this.el.querySelector('#ui-go-restart').addEventListener('click', () => {
                 if (this.onRestart) this.onRestart();
@@ -57,17 +59,22 @@
          * @param {number} completedOrders
          * @param {string} reason - 'hp_zero' | 'deadlock'
          */
-        show(completedOrders, reason) {
+        show(completedOrders, reason, score, maxCombo) {
             if (!this.el) return;
 
-            this._scoreEl.textContent = completedOrders;
+            score = score || 0;
+            maxCombo = maxCombo || 0;
+            this._scoreEl.textContent = score;
 
-            // 最高纪录
-            let best = parseInt(localStorage.getItem('sortgame_best') || '0', 10);
-            const isNewBest = completedOrders > best;
+            // 统计
+            this._statsEl.innerHTML = `完成订单: ${completedOrders}　最大连击: ${maxCombo}`;
+
+            // 最高纪录（改为以得分为准）
+            let best = parseInt(localStorage.getItem('sortgame_best_score') || '0', 10);
+            const isNewBest = score > best;
             if (isNewBest) {
-                best = completedOrders;
-                localStorage.setItem('sortgame_best', String(best));
+                best = score;
+                localStorage.setItem('sortgame_best_score', String(best));
             }
             this._bestEl.textContent = isNewBest ? '新纪录！' : '最高纪录: ' + best;
             this._bestEl.className = isNewBest ? 'gameover-best gameover-new-best' : 'gameover-best';

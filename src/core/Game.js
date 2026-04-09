@@ -137,11 +137,22 @@
                     this._recalcHitAreas();
                 },
 
+                onScoreGain: (scoreResult) => {
+                    if (this.uiManager.gameHUD) {
+                        this.uiManager.gameHUD.showScoreGain(scoreResult);
+                    }
+                },
+
                 onGameOver: (completedOrders, reason) => {
                     this.inputManager.lock();
                     this.canvas.classList.add('gameover');
+                    const fc = this.flowController;
                     setTimeout(() => {
-                        this.uiManager.showResult(completedOrders, reason);
+                        this.uiManager.showResult(
+                            completedOrders, reason,
+                            fc.scoreManager.score,
+                            fc.scoreManager.maxCombo
+                        );
                     }, 600);
                 },
 

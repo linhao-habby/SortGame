@@ -38,6 +38,7 @@
                 slotCount:  GameConfig.resolveValue(stage, 'slotCount'),
                 capacity:   GameConfig.resolveValue(stage, 'capacity'),
                 emptySlots: GameConfig.resolveValue(stage, 'emptySlots'),
+                initBlocks: GameConfig.resolveValue(stage, 'initBlocks'),
                 orderNum:   stage.orderNum || 1,
                 orderCount: stage.orderRange[0] + Math.floor(Math.random() * (stage.orderRange[1] - stage.orderRange[0] + 1)),
                 label:      stage.label,
@@ -51,11 +52,13 @@
         getInitialParams() {
             // 初始使用第一阶段的固定值
             const stage = GameConfig.DIFFICULTY_STAGES[0];
+            const _v = (field) => stage[field] !== undefined ? stage[field] : (stage[field + 'Range'] ? stage[field + 'Range'][0] : undefined);
             return {
-                colorCount: stage.colorCount || stage.colorCountRange[0],
-                slotCount:  stage.slotCount || stage.slotCountRange[0],
-                capacity:   stage.capacity || stage.capacityRange[0],
-                emptySlots: stage.emptySlots || stage.emptySlotsRange[0],
+                colorCount: _v('colorCount'),
+                slotCount:  _v('slotCount'),
+                capacity:   _v('capacity'),
+                emptySlots: _v('emptySlots'),
+                initBlocks: _v('initBlocks'),
                 orderNum:   stage.orderNum || 1,
                 orderCount: stage.orderRange[0],
             };

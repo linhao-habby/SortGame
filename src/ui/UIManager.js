@@ -52,9 +52,9 @@
          * @param {number} completedOrders
          * @param {string} reason
          */
-        showResult(completedOrders, reason) {
+        showResult(completedOrders, reason, score, maxCombo) {
             this.currentScreen = 'result';
-            this.resultPopup.show(completedOrders, reason);
+            this.resultPopup.show(completedOrders, reason, score, maxCombo);
         }
 
         /**

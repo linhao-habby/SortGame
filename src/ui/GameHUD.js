@@ -28,7 +28,10 @@
                         <span class="hp-hearts" id="ui-hp-hearts"></span>
                     </div>
                     <div class="hud-orders-wrap" id="ui-orders-wrap"></div>
-                    <div class="hud-score">完成: <span id="ui-completed-count">0</span></div>
+                    <div class="hud-score-area">
+                        <div class="hud-score-num" id="ui-score">0</div>
+                        <div class="hud-combo" id="ui-combo"></div>
+                    </div>
                 </div>
                 <div class="hud-bottom">
                     <button class="btn-restart" id="ui-btn-restart">重来</button>
@@ -40,7 +43,8 @@
             this._ordersWrap = this.el.querySelector('#ui-orders-wrap');
             this._orderEls = [];
             this._orderBoxEls = [];
-            this._scoreEl = this.el.querySelector('#ui-completed-count');
+            this._scoreEl = this.el.querySelector('#ui-score');
+            this._comboEl = this.el.querySelector('#ui-combo');
             this._currentOrderCount = 0;
 
             this.el.querySelector('#ui-btn-restart').addEventListener('click', () => {
@@ -111,7 +115,16 @@
             }
 
             // 分数
-            this._scoreEl.textContent = gs.completedOrders;
+            this._scoreEl.textContent = gs.score || 0;
+
+            // combo
+            if (gs.combo >= 2) {
+                this._comboEl.textContent = `COMBO x${gs.combo}`;
+                this._comboEl.className = 'hud-combo hud-combo-active';
+            } else {
+                this._comboEl.textContent = '';
+                this._comboEl.className = 'hud-combo';
+            }
         }
 
         /**
@@ -121,6 +134,20 @@
             if (!this._hpEl) return;
             this._hpEl.classList.add('hp-flash');
             setTimeout(() => this._hpEl.classList.remove('hp-flash'), 400);
+        }
+
+        /**
+         * 显示浮动得分
+         */
+        showScoreGain(scoreResult) {
+            if (!this.el || !scoreResult || scoreResult.gain <= 0) return;
+            const float = document.createElement('div');
+            float.className = 'hud-score-float';
+            let text = `+${scoreResult.gain}`;
+            if (scoreResult.combo >= 2) text += ` combo x${scoreResult.combo}`;
+            float.textContent = text;
+            this.el.appendChild(float);
+            setTimeout(() => float.remove(), 1200);
         }
 
         /**

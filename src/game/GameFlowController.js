@@ -19,6 +19,7 @@
  *   onOverflow(overflowData) → Promise                      - 溢出动画，需等待完成
  *   onHPDamage()                                            - 扣血反馈
  *   onBoardChanged()                                        - 棋盘结构变化（新增木槽等），需重算布局
+ *   onScoreGain(scoreResult)                                - 得分事件，含 gain/combo/multiplier
  *   onGameOver(completedOrders, reason)                     - 游戏结束
  *   onNewOrders(orders)                                     - 新订单生成
  */
@@ -30,6 +31,7 @@
             this.gameState = new GameState();
             this.difficultyManager = new DifficultyManager();
             this.orderManager = new OrderManager();
+            this.scoreManager = new ScoreManager();
 
             // 回调，由外部（Game.js）注册
             this.callbacks = {};
@@ -62,6 +64,7 @@
         initGame() {
             this.difficultyManager.reset();
             this.orderManager.reset();
+            this.scoreManager.reset();
 
             const params = this.difficultyManager.getInitialParams();
             this.gameState.initBoard(params);
@@ -136,12 +139,26 @@
             if (delivery.canDeliver) {
                 await this._executeSingleDelivery(delivery.slotIndex, delivery.orderIndex);
 
-                // 两个订单都完成 → 补充 + 新一轮
-                if (this.gameState.allOrdersCompleted()) {
-                    await this._executeRefillAndNewRound();
+                if (GameConfig.REFILL_PER_ORDER) {
+                    // 模式：每完成1个订单就补充
+                    const gameOver = await this._executeRefill();
+                    if (gameOver) return true;
+
+                    // 所有订单完成 → 生成新订单（不再补充）
+                    if (this.gameState.allOrdersCompleted()) {
+                        await this._executeNewRound();
+                    }
+                } else {
+                    // 模式：所有订单完成后一次性补充
+                    if (this.gameState.allOrdersCompleted()) {
+                        await this._executeRefillAndNewRound();
+                    }
                 }
             } else {
-                // 没有交付，检查死局
+                // 没有交付 → combo 重置
+                this.scoreManager.onNoDeliver();
+
+                // 检查死局
                 const go = this.gameState.checkGameOver();
                 if (go.gameOver) {
                     this._onGameOver(go.reason);
@@ -167,8 +184,16 @@
 
             // 逻辑层执行交付（取走整段连续同色，可能 > order.count）
             const result = this.gameState.executeDelivery(slotIndex, orderIndex);
+
+            // 计算得分
+            const scoreResult = this.scoreManager.onDeliver(order.count, result.deliveredCount);
+            this.gameState.score = this.scoreManager.score;
+            this.gameState.combo = this.scoreManager.combo;
+            this.gameState.lastScoreGain = scoreResult.gain;
+
             this._emit('onHUDUpdate', this.gameState);
             this._emit('onOrderComplete');
+            this._emit('onScoreGain', scoreResult);
 
             // 用实际取走数量传给动画（deliveredCount 可能 > order.count）
             const deliverOrder = { ...order, count: result.deliveredCount };
@@ -177,17 +202,18 @@
             this._emit('onHUDUpdate', this.gameState);
         }
 
-        // ===== 补充 + 新一轮 =====
+        // ===== 补充 =====
 
-        async _executeRefillAndNewRound() {
-            // 1. 逻辑层执行补充
+        /**
+         * 执行一次补充（每槽推1个），处理溢出和游戏结束检查
+         * @returns {boolean} 是否游戏结束
+         */
+        async _executeRefill() {
             const colorCount = this.difficultyManager.getAvailableColorCount(this.gameState.completedOrders);
             const refillResult = this.gameState.executeRefill(colorCount);
 
-            // 2. 等待补充动画
             await this._emitAsync('onRefill', refillResult.refillData);
 
-            // 3. 溢出处理
             if (refillResult.overflowData.length > 0) {
                 await this._emitAsync('onOverflow', refillResult.overflowData);
                 this._emit('onHPDamage');
@@ -195,14 +221,17 @@
 
             this._emit('onHUDUpdate', this.gameState);
 
-            // 4. 游戏结束检查
             const go = this.gameState.checkGameOver();
             if (go.gameOver) {
                 this._onGameOver(go.reason);
-                return;
+                return true;
             }
+            return false;
+        }
 
-            // 5. 难度调整
+        // ===== 新一轮（难度调整 + 生成新订单）=====
+
+        async _executeNewRound() {
             const transition = this.difficultyManager.checkStageTransition(this.gameState.completedOrders);
             if (transition.needsAdjust) {
                 const oldParams = this.difficultyManager.getParams(this.gameState.completedOrders - 1);
@@ -210,9 +239,16 @@
                 this._emit('onBoardChanged');
             }
 
-            // 6. 生成新订单
             this._generateNewOrders();
             this._emit('onHUDUpdate', this.gameState);
+        }
+
+        // ===== 补充 + 新一轮（旧模式：所有订单完成后一次性） =====
+
+        async _executeRefillAndNewRound() {
+            const gameOver = await this._executeRefill();
+            if (gameOver) return;
+            await this._executeNewRound();
         }
 
         // ===== 游戏结束 =====

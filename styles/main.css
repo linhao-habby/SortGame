@@ -208,6 +208,62 @@ body {
     font-weight: 700;
 }
 
+.hud-score-area {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 60px;
+}
+
+.hud-score-num {
+    font-size: 18px;
+    font-weight: 800;
+    color: #2563eb;
+}
+
+.hud-combo {
+    font-size: 11px;
+    font-weight: 700;
+    color: transparent;
+    height: 16px;
+    transition: color 0.2s;
+}
+.hud-combo-active {
+    color: #f0a020;
+    animation: combo-pop 0.3s ease-out;
+}
+
+@keyframes combo-pop {
+    0% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+}
+
+.hud-score-float {
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 22px;
+    font-weight: 800;
+    color: #f0c040;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    pointer-events: none;
+    z-index: 20;
+    animation: score-float 1.2s ease-out forwards;
+}
+
+@keyframes score-float {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.2); }
+    70% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.8); }
+}
+
+.gameover-stats {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+}
+
 .hud-bottom {
     display: flex;
     justify-content: center;
@@ -379,22 +435,24 @@ body {
 /* ===== 调试面板 ===== */
 .debug-toggle {
     position: fixed;
-    top: 10px;
-    right: 10px;
-    width: 36px;
-    height: 36px;
-    background: rgba(0,0,0,0.5);
-    color: #aaa;
+    bottom: 16px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    background: rgba(240, 192, 64, 0.85);
+    color: #1a1008;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 24px;
     cursor: pointer;
     z-index: 9999;
     -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    pointer-events: auto;
 }
-.debug-toggle:active { background: rgba(0,0,0,0.8); }
+.debug-toggle:active { background: rgba(240, 192, 64, 1); }
 
 .debug-panel {
     position: fixed;
@@ -441,9 +499,10 @@ body {
     align-items: center;
     gap: 8px;
     border-bottom: 1px solid #333;
+    flex-wrap: wrap;
 }
 .debug-hp-row label { color: #ccc; font-weight: bold; }
-.debug-hp-row input {
+.debug-hp-row input[type="number"] {
     width: 50px;
     background: #1a1008;
     border: 1px solid #555;
@@ -452,6 +511,15 @@ body {
     border-radius: 4px;
     font-size: 13px;
     text-align: center;
+}
+
+.debug-hp-row select {
+    background: #1a1008;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 12px;
 }
 
 .debug-stages { padding: 0; }
@@ -516,15 +584,67 @@ body {
     color: #1a1008;
 }
 .debug-btn-apply:active { background: #d4a020; }
+.debug-btn-save {
+    background: #40a0f0;
+    color: #fff;
+}
+.debug-btn-save:active { background: #2080d0; }
+.debug-btn-export {
+    background: #555;
+    color: #ddd;
+}
+.debug-btn-export:active { background: #666; }
 .debug-btn-reset {
     background: #333;
     color: #aaa;
 }
 .debug-btn-reset:active { background: #444; }
 
+.debug-export-area {
+    padding: 8px 14px;
+}
+.debug-export-area textarea {
+    width: 100%;
+    height: 180px;
+    background: #0a0804;
+    color: #88cc44;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 8px;
+    resize: vertical;
+    margin-bottom: 6px;
+}
+.debug-btn-copy {
+    width: 100%;
+    background: #444;
+    color: #ddd;
+}
+
+.debug-toast {
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.85);
+    color: #f0c040;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    z-index: 10000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+}
+.debug-toast-show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 380px) {
-    .hud-hp, .hud-order, .hud-score {
+.hud-hp, .hud-order, .hud-score, .hud-score-area {
         padding: 5px 8px;
         border-radius: 8px;
     }
