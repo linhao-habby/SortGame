@@ -117,12 +117,18 @@
             // 分数
             this._scoreEl.textContent = gs.score || 0;
 
-            // combo
-            if (gs.combo >= 2) {
-                this._comboEl.textContent = `COMBO x${gs.combo}`;
-                this._comboEl.className = 'hud-combo hud-combo-active';
+            // combo + 进度条
+            if (gs.combo >= 1) {
+                const progress = gs.comboProgress !== undefined ? gs.comboProgress : 1;
+                if (gs.combo >= 2) {
+                    this._comboEl.innerHTML = `COMBO x${gs.combo} <div class="combo-bar"><div class="combo-bar-fill" style="width:${Math.round(progress * 100)}%"></div></div>`;
+                    this._comboEl.className = 'hud-combo hud-combo-active';
+                } else {
+                    this._comboEl.innerHTML = `<div class="combo-bar"><div class="combo-bar-fill" style="width:${Math.round(progress * 100)}%"></div></div>`;
+                    this._comboEl.className = 'hud-combo hud-combo-pending';
+                }
             } else {
-                this._comboEl.textContent = '';
+                this._comboEl.innerHTML = '';
                 this._comboEl.className = 'hud-combo';
             }
         }

@@ -17,6 +17,7 @@
             this.initialState = null;
             this.score = 0;
             this.combo = 0;
+            this.comboProgress = 0;
             this.lastScoreGain = 0;
         }
 

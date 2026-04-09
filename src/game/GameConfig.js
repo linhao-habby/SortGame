@@ -19,6 +19,7 @@
             BASE_PER_BLOCK: 10,       // 基础分：每个订单要求色块 x 此值
             OVERFLOW_PER_BLOCK: 15,   // 超额分：超出订单要求的每个色块 x 此值
             COMBO_STEP: 0.5,          // combo 倍率递增步长（combo N 的倍率 = 1 + (N-1) * step）
+            COMBO_WINDOW: 3,          // combo 窗口：N 次移动内触发交付就保持连击
         },
 
         // ===== 颜色定义 =====

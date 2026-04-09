@@ -80,6 +80,8 @@
                 <input type="number" id="debug-score-overflow" value="${scoreCfg.OVERFLOW_PER_BLOCK}" min="0">
                 <label>combo</label>
                 <input type="number" id="debug-score-combo" value="${scoreCfg.COMBO_STEP}" min="0" step="0.1">
+                <label>combo窗口</label>
+                <input type="number" id="debug-score-combo-window" value="${scoreCfg.COMBO_WINDOW || 3}" min="1" max="10">
             </div>`;
 
             // 阶段
@@ -166,6 +168,8 @@
             if (baseInput) { const v = parseInt(baseInput.value); if (!isNaN(v)) GameConfig.SCORE.BASE_PER_BLOCK = v; }
             if (overflowInput) { const v = parseInt(overflowInput.value); if (!isNaN(v)) GameConfig.SCORE.OVERFLOW_PER_BLOCK = v; }
             if (comboInput) { const v = parseFloat(comboInput.value); if (!isNaN(v)) GameConfig.SCORE.COMBO_STEP = v; }
+            const comboWindowInput = this._panel.querySelector('#debug-score-combo-window');
+            if (comboWindowInput) { const v = parseInt(comboWindowInput.value); if (!isNaN(v) && v >= 1) GameConfig.SCORE.COMBO_WINDOW = v; }
 
             // 各阶段参数
             const inputs = this._panel.querySelectorAll('[data-stage]');

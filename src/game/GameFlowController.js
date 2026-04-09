@@ -155,8 +155,11 @@
                     }
                 }
             } else {
-                // 没有交付 → combo 重置
+                // 没有交付 → combo 窗口计数
                 this.scoreManager.onNoDeliver();
+                this.gameState.combo = this.scoreManager.combo;
+                this.gameState.comboProgress = this.scoreManager.getComboProgress();
+                this._emit('onHUDUpdate', this.gameState);
 
                 // 检查死局
                 const go = this.gameState.checkGameOver();
@@ -189,6 +192,7 @@
             const scoreResult = this.scoreManager.onDeliver(order.count, result.deliveredCount);
             this.gameState.score = this.scoreManager.score;
             this.gameState.combo = this.scoreManager.combo;
+            this.gameState.comboProgress = this.scoreManager.getComboProgress();
             this.gameState.lastScoreGain = scoreResult.gain;
 
             this._emit('onHUDUpdate', this.gameState);
