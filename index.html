@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SortGame - 色块排序交付游戏</title>
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+    <!-- WebGPU 错误提示 -->
+    <div id="gpu-error" class="error-overlay">
+        <h2>WebGPU 启动失败</h2>
+        <p>您的浏览器不支持 WebGPU 或未启用硬件加速。</p>
+        <p>请使用最新版 Chrome / Edge 浏览器，或 iOS 18+ Safari。</p>
+    </div>
+
+    <!-- 渲染画布 -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 脚本加载 -->
+    <!-- 工具类 -->
+    <script src="./src/utils/math.js"></script>
+    <script src="./src/utils/tween.js"></script>
+
+    <!-- 游戏逻辑 -->
+    <script src="./src/game/GameConfig.js"></script>
+    <script src="./src/game/Slot.js"></script>
+    <script src="./src/game/DifficultyManager.js"></script>
+    <script src="./src/game/OrderManager.js"></script>
+    <script src="./src/game/GameState.js"></script>
+
+    <!-- 渲染 -->
+    <script src="./src/rendering/Geometry.js"></script>
+    <script src="./src/rendering/shaders.js"></script>
+    <script src="./src/rendering/Renderer.js"></script>
+    <script src="./src/rendering/BlockRenderer.js"></script>
+    <script src="./src/rendering/SlotRenderer.js"></script>
+    <script src="./src/rendering/AnimationManager.js"></script>
+
+    <!-- 输入 -->
+    <script src="./src/input/InputManager.js"></script>
+
+    <!-- UI -->
+    <script src="./src/ui/MenuScreen.js"></script>
+    <script src="./src/ui/GameHUD.js"></script>
+    <script src="./src/ui/ResultPopup.js"></script>
+    <script src="./src/ui/UIManager.js"></script>
+
+    <!-- 核心 -->
+    <script src="./src/core/GameLoop.js"></script>
+    <script src="./src/core/Game.js"></script>
+
+    <!-- 启动 -->
+    <script>
+        (async function() {
+            'use strict';
+
+            const canvas = document.getElementById('gameCanvas');
+            const errorEl = document.getElementById('gpu-error');
+
+            const game = new Game(canvas);
+            const success = await game.init();
+
+            if (!success) {
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            game.start();
+            window.game = game;
+        })();
+    </script>
+</body>
+</html>

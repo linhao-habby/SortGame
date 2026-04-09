@@ -1,0 +1,285 @@
+/**
+ * GameState.js - 游戏状态管理
+ * 棋盘初始化、移动规则、血量管理、色块补充、溢出扣血、死局检测
+ * 支持同时 2 个订单，2 个都完成后才补充
+ */
+(function() {
+    'use strict';
+
+    class GameState {
+        constructor() {
+            this.slots = [];
+            this.orders = [];                   // 当前订单数组（2个）
+            this.completedOrders = 0;           // 已完成订单总数（累计）
+            this.hp = GameConfig.INITIAL_HP;
+            this.selectedSlotIndex = null;
+            this.status = 'playing';
+            this.initialState = null;
+        }
+
+        /**
+         * 获取普通木槽数量（不含安全槽）
+         */
+        getNormalSlotCount() {
+            return this.slots.filter(s => !s.isSafe).length;
+        }
+
+        // ===== 棋盘初始化 =====
+
+        initBoard(params) {
+            const { colorCount, slotCount, capacity, emptySlots } = params;
+            this.slots = [];
+            this.hp = GameConfig.INITIAL_HP;
+            this.completedOrders = 0;
+            this.orders = [];
+            this.selectedSlotIndex = null;
+            this.status = 'playing';
+
+            for (let i = 0; i < slotCount; i++) {
+                this.slots.push(new Slot(i, capacity, false));
+            }
+
+            const safeSlot = new Slot(slotCount, capacity, true);
+            this.slots.push(safeSlot);
+
+            const fillableSlotCount = slotCount - emptySlots;
+            const totalBlocks = fillableSlotCount * capacity;
+            const blockPool = this._generateBlockPool(totalBlocks, colorCount);
+            this._shuffleArray(blockPool);
+
+            let poolIndex = 0;
+            for (let i = 0; i < fillableSlotCount; i++) {
+                for (let j = 0; j < capacity; j++) {
+                    this.slots[i].blocks.push(blockPool[poolIndex++]);
+                }
+            }
+
+            this.initialState = this._createSnapshot();
+        }
+
+        _generateBlockPool(totalBlocks, colorCount) {
+            const pool = [];
+            const perColor = Math.floor(totalBlocks / colorCount);
+            let remainder = totalBlocks - perColor * colorCount;
+            for (let c = 0; c < colorCount; c++) {
+                const count = perColor + (remainder > 0 ? 1 : 0);
+                if (remainder > 0) remainder--;
+                for (let i = 0; i < count; i++) {
+                    pool.push({ color: c });
+                }
+            }
+            return pool;
+        }
+
+        _shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+        }
+
+        // ===== 移动操作 =====
+
+        selectSlot(slotIndex) {
+            if (this.status !== 'playing') {
+                return { action: 'blocked' };
+            }
+            const slot = this.slots[slotIndex];
+            if (!slot) return { action: 'invalid' };
+
+            if (this.selectedSlotIndex === null) {
+                if (slot.isEmpty()) return { action: 'empty_slot' };
+                this.selectedSlotIndex = slotIndex;
+                return { action: 'selected', data: { slotIndex } };
+            }
+
+            if (this.selectedSlotIndex === slotIndex) {
+                this.selectedSlotIndex = null;
+                return { action: 'deselected', data: { slotIndex } };
+            }
+
+            const sourceIndex = this.selectedSlotIndex;
+            this.selectedSlotIndex = null;
+            return this.tryMove(sourceIndex, slotIndex);
+        }
+
+        tryMove(sourceIndex, targetIndex) {
+            const source = this.slots[sourceIndex];
+            const target = this.slots[targetIndex];
+            if (!source || !target || source.isEmpty()) return { action: 'invalid' };
+
+            const topColor = source.topConsecutiveColor();
+            if (!target.canReceive(topColor)) {
+                if (!target.isEmpty()) {
+                    this.selectedSlotIndex = targetIndex;
+                    return { action: 'reselected', data: { slotIndex: targetIndex } };
+                }
+                return { action: 'illegal' };
+            }
+
+            const consecutiveCount = source.topConsecutiveCount();
+            const space = target.availableSpace();
+            const moveCount = Math.min(consecutiveCount, space);
+
+            const movedBlocks = source.popBlocks(moveCount);
+            movedBlocks.reverse();
+            target.pushBlocks(movedBlocks);
+
+            return {
+                action: 'moved',
+                data: { sourceIndex, targetIndex, movedBlocks, moveCount, color: topColor },
+            };
+        }
+
+        // ===== 交付检测（多订单）=====
+
+        /**
+         * 检测是否有木槽满足任一活跃订单的交付条件
+         * @returns {{ canDeliver: boolean, slotIndex?: number, orderIndex?: number }}
+         */
+        checkDelivery() {
+            // 遍历每个活跃订单
+            for (let oi = 0; oi < this.orders.length; oi++) {
+                const order = this.orders[oi];
+                if (order.status !== 'active') continue;
+
+                // 按木槽顺序遍历
+                for (let si = 0; si < this.slots.length; si++) {
+                    const slot = this.slots[si];
+                    if (slot.isEmpty()) continue;
+                    if (slot.topConsecutiveColor() === order.color &&
+                        slot.topConsecutiveCount() >= order.count) {
+                        return { canDeliver: true, slotIndex: si, orderIndex: oi };
+                    }
+                }
+            }
+            return { canDeliver: false };
+        }
+
+        /**
+         * 执行交付：从指定木槽取走指定订单要求数量的色块
+         * @param {number} slotIndex
+         * @param {number} orderIndex
+         * @returns {{ deliveredBlocks: { color: number }[], order: object }}
+         */
+        executeDelivery(slotIndex, orderIndex) {
+            const order = this.orders[orderIndex];
+            const slot = this.slots[slotIndex];
+            const deliveredBlocks = slot.popBlocks(order.count);
+
+            order.status = 'completed';
+            this.completedOrders++;
+
+            return { deliveredBlocks, order };
+        }
+
+        /**
+         * 检查是否所有订单都已完成
+         */
+        allOrdersCompleted() {
+            return this.orders.length > 0 && this.orders.every(o => o.status === 'completed');
+        }
+
+        /**
+         * 获取当前活跃订单数量
+         */
+        activeOrderCount() {
+            return this.orders.filter(o => o.status === 'active').length;
+        }
+
+        // ===== 色块补充 =====
+
+        executeRefill(availableColorCount) {
+            const refillData = [];
+            const overflowData = [];
+
+            for (const slot of this.slots) {
+                if (slot.isSafe) continue;
+
+                const newColor = Math.floor(Math.random() * availableColorCount);
+                const newBlock = { color: newColor };
+                const overflow = slot.pushFromBottom(newBlock);
+
+                refillData.push({ slotIndex: slot.id, newBlock });
+                if (overflow) {
+                    overflowData.push({ slotIndex: slot.id, block: overflow });
+                }
+            }
+
+            const totalOverflow = overflowData.length;
+            this.hp = Math.max(0, this.hp - totalOverflow);
+
+            return { refillData, overflowData, totalOverflow };
+        }
+
+        // ===== 死局检测 =====
+
+        isDeadlock() {
+            for (const slot of this.slots) {
+                if (!slot.isFull()) return false;
+            }
+            return true;
+        }
+
+        checkGameOver() {
+            if (this.hp <= 0) {
+                this.status = 'gameover';
+                return { gameOver: true, reason: 'hp_zero' };
+            }
+            if (this.isDeadlock()) {
+                this.status = 'gameover';
+                return { gameOver: true, reason: 'deadlock' };
+            }
+            return { gameOver: false };
+        }
+
+        // ===== 重新开始 =====
+
+        restart() {
+            if (!this.initialState) return;
+            this._restoreSnapshot(this.initialState);
+        }
+
+        // ===== 状态快照 =====
+
+        _createSnapshot() {
+            return {
+                slots: this.slots.map(s => s.clone()),
+                hp: this.hp,
+                completedOrders: this.completedOrders,
+                orders: this.orders.map(o => ({ ...o })),
+            };
+        }
+
+        _restoreSnapshot(snapshot) {
+            this.slots = snapshot.slots.map(s => s.clone());
+            this.hp = snapshot.hp;
+            this.completedOrders = snapshot.completedOrders;
+            this.orders = snapshot.orders.map(o => ({ ...o }));
+            this.selectedSlotIndex = null;
+            this.status = 'playing';
+        }
+
+        // ===== 调试 =====
+
+        debugPrint() {
+            console.log(`=== GameState | HP: ${this.hp} | Orders: ${this.completedOrders} | Status: ${this.status} ===`);
+            for (let i = 0; i < this.orders.length; i++) {
+                const o = this.orders[i];
+                const name = GameConfig.COLORS[o.color]?.name || `C${o.color}`;
+                console.log(`  Order${i}: ${name} x${o.count} [${o.status}]`);
+            }
+            for (const slot of this.slots) {
+                const label = slot.isSafe ? '★' : ' ';
+                const blocks = slot.blocks.map(b => {
+                    const c = GameConfig.COLORS[b.color];
+                    return c ? c.name.charAt(0) : b.color;
+                }).join(' ');
+                const empty = slot.availableSpace();
+                console.log(`  [${label}] Slot${slot.id}(${slot.capacity}): [${blocks}]${empty > 0 ? ' +' + empty + '空' : ' 满'}`);
+            }
+        }
+    }
+
+    window.GameState = GameState;
+})();
