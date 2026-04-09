@@ -102,4 +102,78 @@
     };
 
     window.GameConfig = GameConfig;
+
+    // ===== 控制台调参工具 =====
+    // 浏览器控制台输入 D.show() 查看当前难度曲线
+    // 浏览器控制台输入 D.set(阶段序号, { 字段: 值 }) 修改某个阶段
+    // 浏览器控制台输入 D.setAll(完整数组) 替换整个难度曲线
+    // 浏览器控制台输入 D.reset() 恢复默认
+    // 修改后点"重来"即可生效
+    window.D = {
+        _default: JSON.parse(JSON.stringify(GameConfig.DIFFICULTY_STAGES)),
+
+        /** 打印当前难度曲线表格 */
+        show() {
+            const stages = GameConfig.DIFFICULTY_STAGES;
+            console.log('\n===== 难度曲线 =====');
+            console.log('序号 | 阶段     | 完成订单 | 颜色  | 槽数  | 容量  | 空槽  | 订单数 | 每单需求  ');
+            console.log('-----|----------|---------|-------|-------|-------|-------|--------|----------');
+            stages.forEach((s, i) => {
+                const colors = s.colorCount || `${s.colorCountRange[0]}-${s.colorCountRange[1]}`;
+                const slots = s.slotCount || `${s.slotCountRange[0]}-${s.slotCountRange[1]}`;
+                const cap = s.capacity || `${s.capacityRange[0]}-${s.capacityRange[1]}`;
+                const empty = s.emptySlots !== undefined ? s.emptySlots : `${s.emptySlotsRange[0]}-${s.emptySlotsRange[1]}`;
+                console.log(`  ${i}  | ${s.label.padEnd(8)} | ${String(s.minOrders).padStart(3)}-${String(s.maxOrders === Infinity ? '∞' : s.maxOrders).padStart(3)} | ${String(colors).padStart(5)} | ${String(slots).padStart(5)} | ${String(cap).padStart(5)} | ${String(empty).padStart(5)} | ${String(s.orderNum).padStart(6)} | ${s.orderRange[0]}-${s.orderRange[1]}`);
+            });
+            console.log('\n字段说明:');
+            console.log('  colorCount/colorCountRange  - 颜色种类(固定值或[min,max]范围)');
+            console.log('  slotCount/slotCountRange    - 木槽数量');
+            console.log('  capacity/capacityRange      - 每槽容量');
+            console.log('  emptySlots/emptySlotsRange  - 初始空槽数');
+            console.log('  orderNum                    - 同时活跃订单数(1/2/3)');
+            console.log('  orderRange                  - 每个订单色块需求[min,max]');
+            console.log('  minOrders/maxOrders          - 该阶段的完成订单数范围');
+            console.log('\n用法: D.set(0, {colorCount:3, slotCount:4}) 修改第0阶段');
+            return stages;
+        },
+
+        /**
+         * 修改某个阶段的参数
+         * @param {number} index - 阶段序号(0~5)
+         * @param {object} overrides - 要修改的字段，如 {colorCount:4, slotCount:5, orderNum:2}
+         */
+        set(index, overrides) {
+            const stages = GameConfig.DIFFICULTY_STAGES;
+            if (index < 0 || index >= stages.length) {
+                console.error(`无效阶段序号 ${index}，有效范围 0-${stages.length - 1}`);
+                return;
+            }
+            Object.assign(stages[index], overrides);
+            console.log(`阶段 ${index}(${stages[index].label}) 已更新:`, stages[index]);
+            console.log('点击"重来"按钮生效');
+        },
+
+        /**
+         * 替换整个难度曲线
+         * @param {object[]} newStages - 新的难度阶段数组
+         */
+        setAll(newStages) {
+            GameConfig.DIFFICULTY_STAGES = newStages;
+            console.log(`难度曲线已替换，共 ${newStages.length} 个阶段`);
+            console.log('点击"重来"按钮生效');
+        },
+
+        /** 恢复默认难度曲线 */
+        reset() {
+            GameConfig.DIFFICULTY_STAGES = JSON.parse(JSON.stringify(this._default));
+            console.log('难度曲线已恢复默认');
+            console.log('点击"重来"按钮生效');
+        },
+
+        /** 修改初始血量 */
+        hp(value) {
+            GameConfig.INITIAL_HP = value;
+            console.log(`初始血量已改为 ${value}，点击"重来"生效`);
+        },
+    };
 })();
