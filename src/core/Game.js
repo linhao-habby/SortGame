@@ -1,6 +1,13 @@
 /**
  * Game.js - 游戏主类
- * 协调所有模块：游戏逻辑、渲染、布局、输入、动画、UI
+ * 
+ * 职责：模块组装、渲染循环驱动、回调接线
+ *   - 创建并连接所有模块（玩法、渲染、输入、UI）
+ *   - 将 GameFlowController 的玩法事件连接到动画/UI
+ *   - 驱动 60fps 渲染循环
+ * 
+ * 玩法逻辑全部在 GameFlowController 中，本文件不含任何玩法判定。
+ * 渲染/动画细节在 rendering/ 中，本文件只做调度。
  */
 (function() {
     'use strict';
@@ -9,14 +16,11 @@
         constructor(canvas) {
             this.canvas = canvas;
 
-            // 核心模块
-            this.renderer = null;
-            this.gameState = new GameState();
-            this.difficultyManager = new DifficultyManager();
-            this.orderManager = new OrderManager();
-            this.gameLoop = null;
+            // 玩法流程控制器（纯逻辑，在 game/ 目录）
+            this.flowController = new GameFlowController();
 
             // 渲染模块
+            this.renderer = null;
             this.blockRenderer = null;
             this.slotRenderer = null;
 
@@ -30,7 +34,10 @@
             // UI 模块
             this.uiManager = new UIManager();
 
-            // 布局数据
+            // 游戏循环
+            this.gameLoop = null;
+
+            // 布局数据（渲染层使用）
             this.layout = { slotPositions: [] };
 
             // 状态
@@ -72,18 +79,81 @@
                 }
             });
 
-            // 7. 显示主菜单
+            // 7. 注册玩法流程回调（连接玩法事件 → 动画/UI）
+            this._bindFlowCallbacks();
+
+            // 8. 显示主菜单
             this.uiManager.showMenu();
 
             return true;
         }
 
-        // ===== 游戏流程 =====
+        // ===== 玩法流程回调注册 =====
+
+        _bindFlowCallbacks() {
+            const gs = () => this.flowController.gameState;
+
+            this.flowController.setCallbacks({
+                onHUDUpdate: (gameState) => {
+                    this.uiManager.updateHUD(gameState);
+                },
+
+                onMoveExecuted: async (moveData, moveContext) => {
+                    await this.animationManager.playMoveAnimation(moveData, this.layout, moveContext);
+                },
+
+                onDelivery: async (slotIndex, order, slotBlocksBefore) => {
+                    await this.animationManager.playDeliverAnimation(
+                        slotIndex, order.count, order.color, this.layout, slotBlocksBefore
+                    );
+                },
+
+                onOrderComplete: () => {
+                    if (this.uiManager.gameHUD) {
+                        this.uiManager.gameHUD.flashOrderComplete();
+                    }
+                },
+
+                onRefill: async (refillData) => {
+                    await this.animationManager.playRefillAnimation(refillData, this.layout);
+                },
+
+                onOverflow: async (overflowData) => {
+                    await this.animationManager.playOverflowAnimation(overflowData, this.layout);
+                },
+
+                onHPDamage: () => {
+                    if (this.uiManager.gameHUD) {
+                        this.uiManager.gameHUD.flashHP();
+                    }
+                },
+
+                onBoardChanged: () => {
+                    this._recalcLayout();
+                    this._recalcHitAreas();
+                },
+
+                onGameOver: (completedOrders, reason) => {
+                    this.inputManager.lock();
+                    this.canvas.classList.add('gameover');
+                    setTimeout(() => {
+                        this.uiManager.showResult(completedOrders, reason);
+                    }, 600);
+                },
+
+                onNewOrders: (orders) => {
+                    // 预留：可用于订单生成动画
+                },
+            });
+        }
+
+        // ===== 游戏流程（仅启动/重启/菜单切换） =====
 
         _startGame() {
             this._gameStarted = true;
             this.uiManager.showGame();
-            this._initGame();
+            this.animationManager.clear();
+            this.flowController.initGame();
             this.inputManager.unlock();
         }
 
@@ -91,7 +161,8 @@
             this.canvas.classList.remove('gameover');
             this.uiManager.resultPopup.hide();
             this.uiManager.showGame();
-            this._initGame();
+            this.animationManager.clear();
+            this.flowController.restartGame();
             this.inputManager.unlock();
         }
 
@@ -103,37 +174,23 @@
             this.uiManager.showMenu();
         }
 
-        _initGame() {
-            this.difficultyManager.reset();
-            this.orderManager.reset();
-            this.animationManager.clear();
+        // ===== 输入处理 =====
 
-            const params = this.difficultyManager.getInitialParams();
-            this.gameState.initBoard(params);
-            this.difficultyManager.checkStageTransition(0);
+        async _onSlotTap(slotIndex) {
+            if (this.animationManager.isBusy) return;
 
-            // 生成 2 个订单
-            this._generateNewOrders();
+            this.inputManager.lock();
+            const wasAsync = await this.flowController.handleSlotTap(slotIndex);
 
-            this._recalcLayout();
-            this._recalcHitAreas();
-            this.uiManager.updateHUD(this.gameState);
+            if (this.flowController.gameState.status !== 'gameover') {
+                this.inputManager.unlock();
+            }
         }
 
-        _generateNewOrders() {
-            const normalCount = this.gameState.getNormalSlotCount();
-            this.gameState.orders = this.orderManager.generateOrders(
-                this.gameState.slots,
-                this.gameState.completedOrders,
-                this.difficultyManager,
-                normalCount
-            );
-        }
-
-        // ===== 布局 =====
+        // ===== 布局计算（渲染层数据） =====
 
         _recalcLayout() {
-            const slots = this.gameState.slots;
+            const slots = this.flowController.gameState.slots;
             const count = slots.length;
             const capacity = slots[0] ? slots[0].capacity : 5;
             const cols = this._calcCols(count);
@@ -141,17 +198,16 @@
 
             const cellH = GameConfig.RENDER.CELL_HEIGHT;
             const slotW = GameConfig.RENDER.SLOT_INNER_WIDTH + GameConfig.RENDER.SLOT_WALL_THICKNESS * 2;
-            const slotH = cellH * capacity; // 每个木槽的渲染高度
+            const slotH = cellH * capacity;
             const gapX = GameConfig.RENDER.SLOT_GAP;
             const gapY = GameConfig.RENDER.ROW_GAP;
             const cellW = slotW + gapX;
             const cellTotalH = slotH + gapY;
 
-            // 居中
             const totalW = cols * cellW - gapX;
             const totalH = rows * cellTotalH - gapY;
             const offsetX = -totalW / 2 + slotW / 2;
-            const offsetY = -totalH / 2; // 木槽底部对齐
+            const offsetY = -totalH / 2;
 
             this.layout.slotPositions = [];
             for (let i = 0; i < count; i++) {
@@ -159,7 +215,7 @@
                 const row = Math.floor(i / cols);
                 this.layout.slotPositions.push({
                     x: offsetX + col * cellW,
-                    y: offsetY + (rows - 1 - row) * cellTotalH, // 第一行在上方
+                    y: offsetY + (rows - 1 - row) * cellTotalH,
                 });
             }
         }
@@ -183,7 +239,7 @@
             );
         }
 
-        // ===== 游戏循环 =====
+        // ===== 渲染循环 =====
 
         start() {
             this.gameLoop.start();
@@ -191,12 +247,9 @@
 
         _update(dt, now) {
             const dtMs = dt * 1000;
-
-            // 更新动画
             this.animationManager.update(dtMs);
 
             if (!this._gameStarted) {
-                // 菜单状态也要渲染背景
                 const { commandEncoder, renderPass } = this.renderer.beginFrame();
                 this.renderer.drawBackground(renderPass);
                 this.renderer.endFrame(commandEncoder, renderPass);
@@ -204,15 +257,15 @@
             }
 
             // 更新渲染数据
-            this.blockRenderer.update(this.gameState, this.layout, null);
+            this.blockRenderer.update(this.flowController.gameState, this.layout, null);
 
-            // 渲染飞行中的色块
+            // 飞行中的色块
             const flyingBlocks = this.animationManager.getFlyingBlocks();
             for (const fb of flyingBlocks) {
                 this.blockRenderer.addFlyingBlock(fb.x, fb.y, fb.z, fb.color, false);
             }
 
-            this.slotRenderer.update(this.gameState, this.layout);
+            this.slotRenderer.update(this.flowController.gameState, this.layout);
 
             // 渲染
             const { commandEncoder, renderPass } = this.renderer.beginFrame();
@@ -220,137 +273,6 @@
             this.slotRenderer.draw(renderPass);
             this.blockRenderer.draw(renderPass);
             this.renderer.endFrame(commandEncoder, renderPass);
-        }
-
-        // ===== 输入处理 =====
-
-        _onSlotTap(slotIndex) {
-            if (this.animationManager.isBusy) return;
-            if (this.gameState.status !== 'playing') return;
-
-            // 记录移动前的色块数量（供动画计算坐标）
-            const srcSlot = this.gameState.slots[slotIndex];
-            const srcCount = srcSlot ? srcSlot.blocks.length : 0;
-
-            const result = this.gameState.selectSlot(slotIndex);
-            this.uiManager.updateHUD(this.gameState);
-
-            if (result.action === 'moved') {
-                // 移动已在逻辑层完成，计算动画上下文
-                const tgtSlot = this.gameState.slots[result.data.targetIndex];
-                const moveContext = {
-                    sourceBlockCount: srcCount, // 移动前源槽色块数
-                    targetBlockCount: tgtSlot.blocks.length - result.data.moveCount, // 移动前目标槽色块数
-                };
-
-                this.inputManager.lock();
-                this.gameState.status = 'animating';
-                this._playMoveAndCheck(result.data, moveContext);
-            }
-        }
-
-        async _playMoveAndCheck(moveData, moveContext) {
-            await this.animationManager.playMoveAnimation(moveData, this.layout, moveContext);
-
-            // 检测是否有订单可交付
-            const delivery = this.gameState.checkDelivery();
-            if (delivery.canDeliver) {
-                await this._executeSingleDelivery(delivery.slotIndex, delivery.orderIndex);
-
-                // 交付后检查是否所有订单都完成了
-                if (this.gameState.allOrdersCompleted()) {
-                    await this._executeRefillAndNewRound();
-                }
-            } else {
-                const go = this.gameState.checkGameOver();
-                if (go.gameOver) {
-                    this._onGameOver(go.reason);
-                    return;
-                }
-            }
-
-            if (this.gameState.status !== 'gameover') {
-                this.gameState.status = 'playing';
-                this.inputManager.unlock();
-            }
-            this.uiManager.updateHUD(this.gameState);
-        }
-
-        /**
-         * 执行单个订单的交付（只飞走色块，不补充）
-         */
-        async _executeSingleDelivery(slotIndex, orderIndex) {
-            this.gameState.status = 'delivering';
-            const order = this.gameState.orders[orderIndex];
-            const slotBlocksBefore = this.gameState.slots[slotIndex].blocks.length;
-
-            // 交付逻辑
-            this.gameState.executeDelivery(slotIndex, orderIndex);
-            this.uiManager.updateHUD(this.gameState);
-            if (this.uiManager.gameHUD) {
-                this.uiManager.gameHUD.flashOrderComplete();
-            }
-
-            // 交付飞出动画
-            await this.animationManager.playDeliverAnimation(
-                slotIndex, order.count, order.color, this.layout, slotBlocksBefore
-            );
-
-            this.uiManager.updateHUD(this.gameState);
-        }
-
-        /**
-         * 两个订单都完成后：补充 + 生成新一轮订单
-         */
-        async _executeRefillAndNewRound() {
-            // 1. 补充
-            const colorCount = this.difficultyManager.getAvailableColorCount(this.gameState.completedOrders);
-            const refillResult = this.gameState.executeRefill(colorCount);
-
-            // 2. 补充动画
-            await this.animationManager.playRefillAnimation(refillResult.refillData, this.layout);
-
-            // 3. 溢出动画
-            if (refillResult.overflowData.length > 0) {
-                await this.animationManager.playOverflowAnimation(refillResult.overflowData, this.layout);
-                if (this.uiManager.gameHUD) {
-                    this.uiManager.gameHUD.flashHP();
-                }
-            }
-
-            this.uiManager.updateHUD(this.gameState);
-
-            // 4. 游戏结束检查
-            const go = this.gameState.checkGameOver();
-            if (go.gameOver) {
-                this._onGameOver(go.reason);
-                return;
-            }
-
-            // 5. 难度调整
-            const transition = this.difficultyManager.checkStageTransition(this.gameState.completedOrders);
-            if (transition.needsAdjust) {
-                const oldParams = this.difficultyManager.getParams(this.gameState.completedOrders - 1);
-                this.difficultyManager.adjustBoard(this.gameState.slots, oldParams, transition.params);
-                this._recalcLayout();
-                this._recalcHitAreas();
-            }
-
-            // 6. 生成全新 2 个订单
-            this._generateNewOrders();
-            this.uiManager.updateHUD(this.gameState);
-        }
-
-        _onGameOver(reason) {
-            this.gameState.status = 'gameover';
-            this.inputManager.lock();
-            this.uiManager.updateHUD(this.gameState);
-            // 灰度化画面
-            this.canvas.classList.add('gameover');
-            // 延迟弹出结算
-            setTimeout(() => {
-                this.uiManager.showResult(this.gameState.completedOrders, reason);
-            }, 600);
         }
     }
 
