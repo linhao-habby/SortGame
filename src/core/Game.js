@@ -195,7 +195,11 @@
             if (this.animationManager.isBusy) return;
 
             this.inputManager.lock();
-            const wasAsync = await this.flowController.handleSlotTap(slotIndex);
+            try {
+                await this.flowController.handleSlotTap(slotIndex);
+            } catch (e) {
+                console.error('[Game] handleSlotTap error:', e);
+            }
 
             if (this.flowController.gameState.status !== 'gameover') {
                 this.inputManager.unlock();
