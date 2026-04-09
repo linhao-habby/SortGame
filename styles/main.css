@@ -114,6 +114,12 @@ body {
     gap: 4px;
 }
 
+.hud-score-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .hud-hp-bar-wrap {
     background: rgba(0, 0, 0, 0.35);
     padding: 4px 14px;

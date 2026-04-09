@@ -24,11 +24,13 @@
             this.el.innerHTML = `
                 <div class="hud-top">
                     <div class="hud-top-center">
-                        <div class="hud-score-num" id="ui-score">0</div>
+                        <div class="hud-score-row">
+                            <div class="hud-score-num" id="ui-score">0</div>
+                            <div class="hud-combo" id="ui-combo"></div>
+                        </div>
                         <div class="hud-hp-bar-wrap">
                             <span class="hp-hearts" id="ui-hp-hearts"></span>
                         </div>
-                        <div class="hud-combo" id="ui-combo"></div>
                     </div>
                 </div>
                 <div class="hud-orders-float" id="ui-orders-wrap"></div>
