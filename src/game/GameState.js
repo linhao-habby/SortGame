@@ -135,42 +135,54 @@
 
         /**
          * 检测是否有木槽满足任一活跃订单的交付条件
+         * 优先选择顶部连续同色数量最多的木槽
          * @returns {{ canDeliver: boolean, slotIndex?: number, orderIndex?: number }}
          */
         checkDelivery() {
-            // 遍历每个活跃订单
+            // 遍历每个活跃订单，找出所有满足条件的槽，选连续数量最多的
             for (let oi = 0; oi < this.orders.length; oi++) {
                 const order = this.orders[oi];
                 if (order.status !== 'active') continue;
 
-                // 按木槽顺序遍历
+                let bestSlot = -1;
+                let bestCount = 0;
+
                 for (let si = 0; si < this.slots.length; si++) {
                     const slot = this.slots[si];
                     if (slot.isEmpty()) continue;
-                    if (slot.topConsecutiveColor() === order.color &&
-                        slot.topConsecutiveCount() >= order.count) {
-                        return { canDeliver: true, slotIndex: si, orderIndex: oi };
+                    if (slot.topConsecutiveColor() === order.color) {
+                        const count = slot.topConsecutiveCount();
+                        if (count >= order.count && count > bestCount) {
+                            bestCount = count;
+                            bestSlot = si;
+                        }
                     }
+                }
+
+                if (bestSlot >= 0) {
+                    return { canDeliver: true, slotIndex: bestSlot, orderIndex: oi };
                 }
             }
             return { canDeliver: false };
         }
 
         /**
-         * 执行交付：从指定木槽取走指定订单要求数量的色块
+         * 执行交付：取走该槽顶部所有连续同色色块（可能大于订单要求数量）
          * @param {number} slotIndex
          * @param {number} orderIndex
-         * @returns {{ deliveredBlocks: { color: number }[], order: object }}
+         * @returns {{ deliveredBlocks: { color: number }[], order: object, deliveredCount: number }}
          */
         executeDelivery(slotIndex, orderIndex) {
             const order = this.orders[orderIndex];
             const slot = this.slots[slotIndex];
-            const deliveredBlocks = slot.popBlocks(order.count);
+            // 取走整段连续同色，而非仅订单要求的数量
+            const consecutiveCount = slot.topConsecutiveCount();
+            const deliveredBlocks = slot.popBlocks(consecutiveCount);
 
             order.status = 'completed';
             this.completedOrders++;
 
-            return { deliveredBlocks, order };
+            return { deliveredBlocks, order, deliveredCount: consecutiveCount };
         }
 
         /**

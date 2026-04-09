@@ -165,13 +165,14 @@
             const order = this.gameState.orders[orderIndex];
             const slotBlocksBefore = this.gameState.slots[slotIndex].blocks.length;
 
-            // 逻辑层执行交付
-            this.gameState.executeDelivery(slotIndex, orderIndex);
+            // 逻辑层执行交付（取走整段连续同色，可能 > order.count）
+            const result = this.gameState.executeDelivery(slotIndex, orderIndex);
             this._emit('onHUDUpdate', this.gameState);
             this._emit('onOrderComplete');
 
-            // 等待交付动画
-            await this._emitAsync('onDelivery', slotIndex, order, slotBlocksBefore);
+            // 用实际取走数量传给动画（deliveredCount 可能 > order.count）
+            const deliverOrder = { ...order, count: result.deliveredCount };
+            await this._emitAsync('onDelivery', slotIndex, deliverOrder, slotBlocksBefore);
 
             this._emit('onHUDUpdate', this.gameState);
         }
