@@ -82,7 +82,11 @@
             // 7. 注册玩法流程回调（连接玩法事件 → 动画/UI）
             this._bindFlowCallbacks();
 
-            // 8. 显示主菜单
+            // 8. 调试面板
+            this.debugPanel = new DebugPanel();
+            this.debugPanel.create(() => this._restartGame());
+
+            // 9. 显示主菜单
             this.uiManager.showMenu();
 
             return true;
