@@ -85,11 +85,14 @@
 
         _generateNewOrders() {
             const normalCount = this.gameState.getNormalSlotCount();
+            const params = this.difficultyManager.getParams(this.gameState.completedOrders);
+            const orderNum = params.orderNum || 1;
             this.gameState.orders = this.orderManager.generateOrders(
                 this.gameState.slots,
                 this.gameState.completedOrders,
                 this.difficultyManager,
-                normalCount
+                normalCount,
+                orderNum
             );
             this._emit('onNewOrders', this.gameState.orders);
         }

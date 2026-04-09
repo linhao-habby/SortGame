@@ -38,6 +38,7 @@
                 slotCount:  GameConfig.resolveValue(stage, 'slotCount'),
                 capacity:   GameConfig.resolveValue(stage, 'capacity'),
                 emptySlots: GameConfig.resolveValue(stage, 'emptySlots'),
+                orderNum:   stage.orderNum || 1,
                 orderCount: stage.orderRange[0] + Math.floor(Math.random() * (stage.orderRange[1] - stage.orderRange[0] + 1)),
                 label:      stage.label,
             };
@@ -55,6 +56,7 @@
                 slotCount:  stage.slotCount || stage.slotCountRange[0],
                 capacity:   stage.capacity || stage.capacityRange[0],
                 emptySlots: stage.emptySlots || stage.emptySlotsRange[0],
+                orderNum:   stage.orderNum || 1,
                 orderCount: stage.orderRange[0],
             };
         }

@@ -27,14 +27,7 @@
                         <span class="hp-label">HP</span>
                         <span class="hp-hearts" id="ui-hp-hearts"></span>
                     </div>
-                    <div class="hud-orders-wrap" id="ui-orders-wrap">
-                        <div class="hud-order" id="ui-order-0">
-                            <span class="order-detail" id="ui-order-detail-0">-</span>
-                        </div>
-                        <div class="hud-order" id="ui-order-1">
-                            <span class="order-detail" id="ui-order-detail-1">-</span>
-                        </div>
-                    </div>
+                    <div class="hud-orders-wrap" id="ui-orders-wrap"></div>
                     <div class="hud-score">完成: <span id="ui-completed-count">0</span></div>
                 </div>
                 <div class="hud-bottom">
@@ -44,19 +37,39 @@
             document.body.appendChild(this.el);
 
             this._hpEl = this.el.querySelector('#ui-hp-hearts');
-            this._orderEls = [
-                this.el.querySelector('#ui-order-detail-0'),
-                this.el.querySelector('#ui-order-detail-1'),
-            ];
-            this._orderBoxEls = [
-                this.el.querySelector('#ui-order-0'),
-                this.el.querySelector('#ui-order-1'),
-            ];
+            this._ordersWrap = this.el.querySelector('#ui-orders-wrap');
+            this._orderEls = [];
+            this._orderBoxEls = [];
             this._scoreEl = this.el.querySelector('#ui-completed-count');
+            this._currentOrderCount = 0;
 
             this.el.querySelector('#ui-btn-restart').addEventListener('click', () => {
                 if (this.onRestart) this.onRestart();
             });
+        }
+
+        /**
+         * 动态创建订单 DOM 元素（当订单数量变化时调用）
+         */
+        _ensureOrderSlots(count) {
+            if (count === this._currentOrderCount) return;
+            this._ordersWrap.innerHTML = '';
+            this._orderEls = [];
+            this._orderBoxEls = [];
+            for (let i = 0; i < count; i++) {
+                const box = document.createElement('div');
+                box.className = 'hud-order';
+                box.id = `ui-order-${i}`;
+                const detail = document.createElement('span');
+                detail.className = 'order-detail';
+                detail.id = `ui-order-detail-${i}`;
+                detail.textContent = '-';
+                box.appendChild(detail);
+                this._ordersWrap.appendChild(box);
+                this._orderEls.push(detail);
+                this._orderBoxEls.push(box);
+            }
+            this._currentOrderCount = count;
         }
 
         /**
@@ -74,8 +87,11 @@
             this._hpEl.textContent = hp;
             this._hpEl.className = gs.hp <= 3 ? 'hp-hearts hp-low' : 'hp-hearts';
 
-            // 2 个订单
-            for (let i = 0; i < 2; i++) {
+            // 动态订单（1~3 个）
+            const orderCount = gs.orders.length;
+            this._ensureOrderSlots(orderCount);
+
+            for (let i = 0; i < orderCount; i++) {
                 const order = gs.orders[i];
                 const el = this._orderEls[i];
                 const box = this._orderBoxEls[i];
