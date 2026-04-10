@@ -65,6 +65,9 @@
                 logParts.push(`C${a.color}x${a.count}(棋盘${actual})`);
             }
 
+            // 避免即时交付：如果某订单的(颜色,数量)已经可以被某个槽直接交付，尝试调整
+            this._avoidInstantDelivery(assignments, colorStats, slots, minPerOrder, effectiveMax);
+
             const totalAssigned = assignments.reduce((s, a) => s + a.count, 0);
             console.log(`[OrderManager] 生成${orderNum}个订单: ${logParts.join(', ')}, 总需=${totalAssigned}, 目标=${totalCount}`);
 
@@ -244,6 +247,62 @@
             else if (stat.totalCount >= 3) w += 1;
             if (stat.topPresence >= 2) w += 2;
             return w;
+        }
+
+        /**
+         * 避免即时交付（软约束）
+         * 如果某订单已经可以被棋盘上某个槽顶部直接满足，尝试：
+         *   1. 优先：count+1（需要多攒一个才能交付）
+         *   2. 备选：换一个不会即时交付的颜色
+         * 如果都做不到，保持原样（不影响底层数量判定）
+         */
+        _avoidInstantDelivery(assignments, colorStats, slots, minPerOrder, maxPerOrder) {
+            const statsMap = {};
+            for (const s of colorStats) statsMap[s.color] = s;
+
+            for (const a of assignments) {
+                // 检查是否有槽可以直接交付这个订单
+                const canInstant = this._canInstantDeliver(a.color, a.count, slots);
+                if (!canInstant) continue;
+
+                // 尝试 count+1
+                const actual = statsMap[a.color] ? statsMap[a.color].totalCount : 0;
+                if (a.count + 1 <= maxPerOrder && a.count + 1 <= actual) {
+                    // count+1 后是否还能即时交付？
+                    if (!this._canInstantDeliver(a.color, a.count + 1, slots)) {
+                        console.log(`[OrderManager] 避免即时交付: C${a.color}x${a.count} → x${a.count + 1}`);
+                        a.count++;
+                        continue;
+                    }
+                }
+
+                // 尝试换颜色：找一个不会即时交付的、数量足够的颜色
+                const usedColors = new Set(assignments.map(x => x.color));
+                const alternatives = colorStats.filter(s =>
+                    !usedColors.has(s.color) &&
+                    s.totalCount >= a.count &&
+                    !this._canInstantDeliver(s.color, a.count, slots)
+                );
+                if (alternatives.length > 0) {
+                    const pick = alternatives[Math.floor(Math.random() * alternatives.length)];
+                    console.log(`[OrderManager] 避免即时交付: C${a.color}x${a.count} → C${pick.color}x${a.count}`);
+                    a.color = pick.color;
+                }
+                // 都做不到就保持原样
+            }
+        }
+
+        /**
+         * 检查棋盘上是否有槽可以直接交付指定颜色和数量
+         */
+        _canInstantDeliver(color, count, slots) {
+            for (const slot of slots) {
+                if (slot.isEmpty()) continue;
+                const topColor = slot.topConsecutiveColor();
+                if (topColor !== color && topColor !== -1) continue;
+                if (slot.topConsecutiveCount() >= count) return true;
+            }
+            return false;
         }
 
         _shuffleArray(arr) {
