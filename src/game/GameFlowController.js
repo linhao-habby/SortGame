@@ -135,58 +135,62 @@
 
             this.gameState.status = 'animating';
 
-            // 1. 等待移动动画
-            await this._emitAsync('onMoveExecuted', result.data, moveContext);
+            try {
+                // 1. 等待移动动画
+                await this._emitAsync('onMoveExecuted', result.data, moveContext);
 
-            // 2. 检测交付
-            const delivery = this.gameState.checkDelivery();
-            let hadDeliveryOrClear = false;
+                // 2. 检测交付
+                const delivery = this.gameState.checkDelivery();
+                let hadDeliveryOrClear = false;
 
-            if (delivery.canDeliver) {
-                hadDeliveryOrClear = true;
-                await this._executeSingleDelivery(delivery.slotIndex, delivery.orderIndex);
+                if (delivery.canDeliver) {
+                    hadDeliveryOrClear = true;
+                    await this._executeSingleDelivery(delivery.slotIndex, delivery.orderIndex);
 
-                if (GameConfig.REFILL_PER_ORDER) {
-                    // 模式：每完成1个订单就补充
-                    const gameOver = await this._executeRefill();
-                    if (gameOver) return true;
+                    if (GameConfig.REFILL_PER_ORDER) {
+                        // 模式：每完成1个订单就补充
+                        const gameOver = await this._executeRefill();
+                        if (gameOver) return true;
 
-                    // 补充后检测整槽纯色消除（补充可能填满某槽）
-                    await this._checkAndExecuteFullSlotClear();
+                        // 补充后检测整槽纯色消除（补充可能填满某槽）
+                        await this._checkAndExecuteFullSlotClear();
 
-                    // 所有订单完成 → 生成新订单（此时棋盘是消除后的真实状态）
-                    if (this.gameState.allOrdersCompleted()) {
-                        await this._executeNewRound();
-                    }
-                } else {
-                    // 模式：所有订单完成后一次性补充
-                    if (this.gameState.allOrdersCompleted()) {
-                        await this._executeRefillAndNewRound();
+                        // 所有订单完成 → 生成新订单（此时棋盘是消除后的真实状态）
+                        if (this.gameState.allOrdersCompleted()) {
+                            await this._executeNewRound();
+                        }
+                    } else {
+                        // 模式：所有订单完成后一次性补充
+                        if (this.gameState.allOrdersCompleted()) {
+                            await this._executeRefillAndNewRound();
+                        }
                     }
                 }
-            }
 
-            // 3. 检测整槽纯色消除（移动本身可能填满某槽）
-            if (await this._checkAndExecuteFullSlotClear()) {
-                hadDeliveryOrClear = true;
-            }
-
-            if (!hadDeliveryOrClear) {
-                // 没有交付也没有整槽消除 → combo 窗口计数
-                this.scoreManager.onNoDeliver();
-                this.gameState.combo = this.scoreManager.combo;
-                this.gameState.comboProgress = this.scoreManager.getComboProgress();
-                this._emit('onHUDUpdate', this.gameState);
-
-                // 检查死局
-                const go = this.gameState.checkGameOver();
-                if (go.gameOver) {
-                    this._onGameOver(go.reason);
-                    return true;
+                // 3. 检测整槽纯色消除（移动本身可能填满某槽）
+                if (await this._checkAndExecuteFullSlotClear()) {
+                    hadDeliveryOrClear = true;
                 }
+
+                if (!hadDeliveryOrClear) {
+                    // 没有交付也没有整槽消除 → combo 窗口计数
+                    this.scoreManager.onNoDeliver();
+                    this.gameState.combo = this.scoreManager.combo;
+                    this.gameState.comboProgress = this.scoreManager.getComboProgress();
+                    this._emit('onHUDUpdate', this.gameState);
+
+                    // 检查死局
+                    const go = this.gameState.checkGameOver();
+                    if (go.gameOver) {
+                        this._onGameOver(go.reason);
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.error('[GameFlowController] handleSlotTap error:', e);
             }
 
-            // 恢复可操作状态
+            // 恢复可操作状态（即使异常也必须恢复）
             if (this.gameState.status !== 'gameover') {
                 this.gameState.status = 'playing';
             }

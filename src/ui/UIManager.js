@@ -10,6 +10,7 @@
             this.menuScreen = null;
             this.gameHUD = null;
             this.resultPopup = null;
+            this.tutorialOverlay = null;
             this.currentScreen = null; // 'menu' | 'game' | 'result'
         }
 
@@ -21,10 +22,12 @@
             this.menuScreen = new MenuScreen(callbacks.onStartGame);
             this.gameHUD = new GameHUD(callbacks.onRestart);
             this.resultPopup = new ResultPopup(callbacks.onRestart, callbacks.onBackToMenu);
+            this.tutorialOverlay = new TutorialOverlay();
 
             this.menuScreen.create();
             this.gameHUD.create();
             this.resultPopup.create();
+            this.tutorialOverlay.create();
         }
 
         /**

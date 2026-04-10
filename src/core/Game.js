@@ -181,7 +181,16 @@
             this.uiManager.showGame();
             this.animationManager.clear();
             this.flowController.initGame();
-            this.inputManager.unlock();
+
+            // 首次游戏显示新手引导，完成后解锁输入
+            const tutorial = this.uiManager.tutorialOverlay;
+            if (tutorial && tutorial.shouldShow()) {
+                tutorial.show(() => {
+                    this.inputManager.unlock();
+                });
+            } else {
+                this.inputManager.unlock();
+            }
         }
 
         _restartGame() {
@@ -208,9 +217,21 @@
 
             this.inputManager.lock();
             try {
-                await this.flowController.handleSlotTap(slotIndex);
+                // 超时保护：最多等 5 秒，防止动画卡死导致永远无法操作
+                const timeout = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('handleSlotTap timeout')), 5000)
+                );
+                await Promise.race([
+                    this.flowController.handleSlotTap(slotIndex),
+                    timeout,
+                ]);
             } catch (e) {
                 console.error('[Game] handleSlotTap error:', e);
+                // 异常恢复：清除动画状态，恢复游戏状态
+                this.animationManager.clear();
+                if (this.flowController.gameState.status === 'animating') {
+                    this.flowController.gameState.status = 'playing';
+                }
             }
 
             if (this.flowController.gameState.status !== 'gameover') {
