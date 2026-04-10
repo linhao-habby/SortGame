@@ -95,37 +95,25 @@
                 buttonsEl.innerHTML = `
                     <div class="name-input-row" id="ui-go-name-row">
                         <input type="text" id="ui-go-name" placeholder="输入昵称" maxlength="12" />
-                        <button class="result-btn-leaderboard" id="ui-go-submit">提交分数</button>
                     </div>
+                    <div class="leaderboard-submit-status" id="ui-go-submit-status"></div>
                     <button class="result-btn-leaderboard" id="ui-go-lb" style="width:100%">查看排行榜</button>
                     <button class="btn-restart-big" id="ui-go-restart">重新开始</button>
                     <button class="btn-back-menu" id="ui-go-menu">主菜单</button>
                 `;
 
-                // 昵称输入
+                // 昵称输入（修改后自动保存）
                 const nameInput = buttonsEl.querySelector('#ui-go-name');
-                if (window.LeaderboardService) {
-                    const svc = this._getLeaderboardService();
-                    nameInput.value = svc.getPlayerName();
+                const svc = this._getLeaderboardService();
+                if (svc) {
+                    nameInput.value = svc.getPlayerName() || 'Player';
+                    nameInput.addEventListener('change', () => {
+                        svc.setPlayerName(nameInput.value.trim() || 'Player');
+                    });
                 }
 
-                // 提交分数
-                buttonsEl.querySelector('#ui-go-submit').addEventListener('click', async () => {
-                    const svc = this._getLeaderboardService();
-                    if (!svc) return;
-                    const name = nameInput.value.trim() || 'Player';
-                    svc.setPlayerName(name);
-                    const btn = buttonsEl.querySelector('#ui-go-submit');
-                    btn.textContent = '提交中...';
-                    btn.disabled = true;
-                    const ok = await svc.submitScore({
-                        name, score, orders: completedOrders, combo: maxCombo,
-                    });
-                    btn.textContent = ok ? '已提交' : '提交失败';
-                    if (ok) {
-                        buttonsEl.querySelector('#ui-go-name-row').style.display = 'none';
-                    }
-                });
+                // 自动提交分数
+                this._autoSubmitScore(score, completedOrders, maxCombo, buttonsEl);
 
                 // 查看排行榜
                 buttonsEl.querySelector('#ui-go-lb').addEventListener('click', () => {
@@ -202,6 +190,34 @@
             });
 
             this._showPopup();
+        }
+
+        /**
+         * 自动提交分数到排行榜
+         */
+        async _autoSubmitScore(score, completedOrders, maxCombo, buttonsEl) {
+            const svc = this._getLeaderboardService();
+            if (!svc) return;
+
+            const statusEl = buttonsEl.querySelector('#ui-go-submit-status');
+            const nameInput = buttonsEl.querySelector('#ui-go-name');
+            statusEl.textContent = '正在提交分数...';
+            statusEl.style.color = 'rgba(255, 200, 100, 0.5)';
+
+            const name = (nameInput ? nameInput.value.trim() : '') || svc.getPlayerName() || 'Player';
+            svc.setPlayerName(name);
+
+            const ok = await svc.submitScore({
+                name, score, orders: completedOrders, combo: maxCombo,
+            });
+
+            if (ok) {
+                statusEl.textContent = '分数已提交';
+                statusEl.style.color = 'rgba(100, 255, 100, 0.7)';
+            } else {
+                statusEl.textContent = '提交失败，可稍后查看排行榜重试';
+                statusEl.style.color = 'rgba(255, 100, 100, 0.7)';
+            }
         }
 
         /**
