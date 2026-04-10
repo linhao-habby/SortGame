@@ -154,9 +154,9 @@
         }
 
         /**
-         * 检测是否为"整槽纯色满槽"（全部同色或含彩虹块且满槽）
-         * 不含彩虹块时：所有色块颜色相同且满槽
-         * 含彩虹块的情况不触发整槽消除（彩虹块不应被白白消耗）
+         * 检测是否为"整槽纯色满槽"
+         * 彩虹块视为万能色：只要所有普通色块颜色相同，彩虹块算同色
+         * 全是彩虹块 → 不触发
          * 
          * @returns {{ isFull: boolean, color: number } | null}  满足条件返回颜色，否则 null
          */
@@ -164,7 +164,7 @@
             if (!this.isFull()) return null;
             if (this.blocks.length === 0) return null;
 
-            // 找到第一个非彩虹块的颜色
+            // 找到所有普通色块的颜色，检查是否一致
             let baseColor = -1;
             for (const block of this.blocks) {
                 if (isRainbow(block)) continue;
@@ -175,13 +175,8 @@
                 }
             }
 
-            // 全是彩虹块 → 不触发（没有意义）
+            // 全是彩虹块 → 不触发
             if (baseColor === -1) return null;
-
-            // 含有彩虹块 → 不触发（不应消耗彩虹块）
-            for (const block of this.blocks) {
-                if (isRainbow(block)) return null;
-            }
 
             return { isFull: true, color: baseColor };
         }
