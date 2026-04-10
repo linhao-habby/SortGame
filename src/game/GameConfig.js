@@ -59,6 +59,35 @@
             { minOrders: 50, maxOrders: Infinity,  colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 1,                  orderNum: 2, orderRange: [4, 5], label: '极限' },
         ],
 
+        // ===== 关卡模式数据（20关，5章节）=====
+        LEVEL_DATA: [
+            // 第一章：初识（1-4关）
+            { id: 1,  chapter: '初识', colorCount: 2, slotCount: 3, capacity: 4, emptySlots: 1, initBlocks: 3, orderNum: 1, orderRange: [2, 2], targetOrders: 3,  hp: 5 },
+            { id: 2,  chapter: '初识', colorCount: 2, slotCount: 3, capacity: 5, emptySlots: 1, initBlocks: 3, orderNum: 1, orderRange: [3, 3], targetOrders: 4,  hp: 5 },
+            { id: 3,  chapter: '初识', colorCount: 3, slotCount: 3, capacity: 5, emptySlots: 1, initBlocks: 3, orderNum: 1, orderRange: [3, 3], targetOrders: 5,  hp: 5 },
+            { id: 4,  chapter: '初识', colorCount: 3, slotCount: 4, capacity: 5, emptySlots: 1, initBlocks: 4, orderNum: 1, orderRange: [3, 3], targetOrders: 6,  hp: 5 },
+            // 第二章：进阶（5-8关）
+            { id: 5,  chapter: '进阶', colorCount: 3, slotCount: 4, capacity: 5, emptySlots: 1, initBlocks: 4, orderNum: 1, orderRange: [4, 4], targetOrders: 7,  hp: 4 },
+            { id: 6,  chapter: '进阶', colorCount: 3, slotCount: 4, capacity: 5, emptySlots: 1, initBlocks: 5, orderNum: 1, orderRange: [4, 4], targetOrders: 8,  hp: 4 },
+            { id: 7,  chapter: '进阶', colorCount: 4, slotCount: 5, capacity: 5, emptySlots: 1, initBlocks: 4, orderNum: 1, orderRange: [3, 4], targetOrders: 8,  hp: 4 },
+            { id: 8,  chapter: '进阶', colorCount: 4, slotCount: 5, capacity: 5, emptySlots: 1, initBlocks: 5, orderNum: 1, orderRange: [4, 4], targetOrders: 9,  hp: 4 },
+            // 第三章：挑战（9-12关）
+            { id: 9,  chapter: '挑战', colorCount: 4, slotCount: 5, capacity: 5, emptySlots: 1, initBlocks: 5, orderNum: 2, orderRange: [3, 3], targetOrders: 8,  hp: 3 },
+            { id: 10, chapter: '挑战', colorCount: 4, slotCount: 5, capacity: 5, emptySlots: 1, initBlocks: 5, orderNum: 2, orderRange: [3, 4], targetOrders: 9,  hp: 3 },
+            { id: 11, chapter: '挑战', colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 1, initBlocks: 4, orderNum: 2, orderRange: [3, 4], targetOrders: 10, hp: 3 },
+            { id: 12, chapter: '挑战', colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 1, initBlocks: 5, orderNum: 2, orderRange: [4, 4], targetOrders: 10, hp: 3 },
+            // 第四章：困难（13-16关）
+            { id: 13, chapter: '困难', colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 1, initBlocks: 5, orderNum: 2, orderRange: [4, 4], targetOrders: 11, hp: 3 },
+            { id: 14, chapter: '困难', colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 0, initBlocks: 5, orderNum: 2, orderRange: [4, 5], targetOrders: 11, hp: 3 },
+            { id: 15, chapter: '困难', colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 0, initBlocks: 5, orderNum: 2, orderRange: [4, 5], targetOrders: 12, hp: 2 },
+            { id: 16, chapter: '困难', colorCount: 5, slotCount: 6, capacity: 5, emptySlots: 0, initBlocks: 5, orderNum: 2, orderRange: [4, 5], targetOrders: 12, hp: 2 },
+            // 第五章：极限（17-20关）
+            { id: 17, chapter: '极限', colorCount: 5, slotCount: 6, capacity: 5, emptySlots: 0, initBlocks: 5, orderNum: 2, orderRange: [5, 5], targetOrders: 13, hp: 2 },
+            { id: 18, chapter: '极限', colorCount: 5, slotCount: 7, capacity: 5, emptySlots: 0, initBlocks: 5, orderNum: 3, orderRange: [3, 4], targetOrders: 12, hp: 2 },
+            { id: 19, chapter: '极限', colorCount: 5, slotCount: 7, capacity: 5, emptySlots: 0, initBlocks: 5, orderNum: 3, orderRange: [4, 4], targetOrders: 13, hp: 2 },
+            { id: 20, chapter: '极限', colorCount: 5, slotCount: 7, capacity: 5, emptySlots: 0, initBlocks: 5, orderNum: 3, orderRange: [4, 5], targetOrders: 15, hp: 2 },
+        ],
+
         // ===== 动画时长 (ms) =====
         ANIM: {
             BLOCK_POP_OUT:   150,

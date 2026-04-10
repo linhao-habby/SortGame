@@ -37,6 +37,11 @@
 
             // 回调，由外部（Game.js）注册
             this.callbacks = {};
+
+            // 游戏模式
+            this.gameMode = 'endless';      // 'endless' | 'level'
+            this.levelConfig = null;         // 关卡模式时的配置
+            this.levelStartHP = 0;          // 关卡初始 HP（用于星级计算）
         }
 
         /**
@@ -63,14 +68,32 @@
 
         // ===== 游戏初始化 =====
 
-        initGame() {
+        /**
+         * 初始化游戏
+         * @param {string} mode - 'endless' | 'level'
+         * @param {object} [levelConfig] - 关卡配置（关卡模式时必传）
+         */
+        initGame(mode, levelConfig) {
+            this.gameMode = mode || 'endless';
+            this.levelConfig = levelConfig || null;
+
             this.difficultyManager.reset();
             this.orderManager.reset();
             this.scoreManager.reset();
 
-            const params = this.difficultyManager.getInitialParams();
-            this.gameState.initBoard(params);
-            this.difficultyManager.checkStageTransition(0);
+            if (this.gameMode === 'level' && this.levelConfig) {
+                // 关卡模式：设置固定参数
+                this.difficultyManager.setFixedParams(this.levelConfig);
+                const params = this.difficultyManager.getInitialParams();
+                params.hp = this.levelConfig.hp;
+                this.gameState.initBoard(params);
+                this.levelStartHP = this.levelConfig.hp;
+            } else {
+                // 无尽模式：原有逻辑
+                const params = this.difficultyManager.getInitialParams();
+                this.gameState.initBoard(params);
+                this.difficultyManager.checkStageTransition(0);
+            }
 
             // 生成初始订单
             this._generateNewOrders();
@@ -80,10 +103,10 @@
         }
 
         /**
-         * 重新开始（完全重置）
+         * 重新开始（完全重置，保持当前模式）
          */
         restartGame() {
-            this.initGame();
+            this.initGame(this.gameMode, this.levelConfig);
         }
 
         // ===== 订单生成 =====
@@ -147,9 +170,17 @@
                     hadDeliveryOrClear = true;
 
                     // 依次执行所有可交付的订单（动画串行播放）
+                    let levelCleared = false;
                     for (const d of delivery.deliveries) {
-                        await this._executeSingleDelivery(d.slotIndex, d.orderIndex);
+                        const deliveryResult = await this._executeSingleDelivery(d.slotIndex, d.orderIndex);
+                        if (deliveryResult === 'level_clear') {
+                            levelCleared = true;
+                            break;
+                        }
                     }
+
+                    // 关卡模式通关 → 直接返回，不再补充/新订单
+                    if (levelCleared) return true;
 
                     // 所有交付完成后，只补充一次
                     if (this.gameState.allOrdersCompleted()) {
@@ -233,6 +264,24 @@
             }
 
             this._emit('onHUDUpdate', this.gameState);
+
+            // 关卡模式：检测通关
+            if (this.gameMode === 'level' && this.levelConfig) {
+                if (this.gameState.completedOrders >= this.levelConfig.targetOrders) {
+                    this._onLevelClear();
+                    return 'level_clear';
+                }
+            }
+        }
+
+        /**
+         * 关卡通关处理
+         */
+        _onLevelClear() {
+            this.gameState.status = 'gameover'; // 停止操作
+            this._emit('onHUDUpdate', this.gameState);
+            this._emit('onLevelClear', this.levelConfig.id, this.gameState.hp, this.gameState.completedOrders,
+                this.scoreManager.score, this.scoreManager.maxCombo);
         }
 
         // ===== 整槽纯色消除 =====

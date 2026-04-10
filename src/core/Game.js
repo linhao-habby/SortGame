@@ -42,6 +42,11 @@
 
             // 状态
             this._gameStarted = false;
+            this._gameMode = 'endless';     // 'endless' | 'level'
+            this._currentLevelId = null;    // 关卡模式时的当前关卡 ID
+
+            // 关卡管理器
+            this.levelManager = new LevelManager();
         }
 
         async init() {
@@ -62,10 +67,15 @@
 
             // 4. UI
             this.uiManager.init({
-                onStartGame: () => this._startGame(),
+                onStartEndless: () => this._startEndless(),
+                onShowLevelSelect: () => this._showLevelSelect(),
+                onSelectLevel: (levelId) => this._startLevel(levelId),
                 onRestart: () => this._restartGame(),
                 onBackToMenu: () => this._backToMenu(),
-            });
+                onBackToLevelSelect: () => this._showLevelSelect(),
+                onNextLevel: () => this._nextLevel(),
+                onRetryLevel: () => this._retryLevel(),
+            }, this.levelManager);
 
             // 5. 游戏循环
             this.gameLoop = new GameLoop((dt, now) => this._update(dt, now));
@@ -151,7 +161,9 @@
                         this.uiManager.showResult(
                             completedOrders, reason,
                             fc.scoreManager.score,
-                            fc.scoreManager.maxCombo
+                            fc.scoreManager.maxCombo,
+                            this._gameMode,
+                            this._currentLevelId ? this.levelManager.getLevelConfig(this._currentLevelId) : null
                         );
                     }, 600);
                 },
@@ -171,16 +183,33 @@
                         slotIndex, this.layout
                     );
                 },
+
+                onLevelClear: (levelId, currentHP, completedOrders, score, maxCombo) => {
+                    this.inputManager.lock();
+                    const stars = this.levelManager.calcStars(
+                        this.levelManager.getLevelConfig(levelId), currentHP
+                    );
+                    this.levelManager.saveClear(levelId, stars, score);
+                    const isLastLevel = levelId >= this.levelManager.getTotalLevels();
+                    setTimeout(() => {
+                        this.uiManager.showLevelClear(levelId, stars, score, completedOrders, maxCombo, isLastLevel);
+                    }, 400);
+                },
             });
         }
 
-        // ===== 游戏流程（仅启动/重启/菜单切换） =====
+        // ===== 游戏流程 =====
 
-        _startGame() {
+        /**
+         * 启动无尽模式
+         */
+        _startEndless() {
+            this._gameMode = 'endless';
+            this._currentLevelId = null;
             this._gameStarted = true;
-            this.uiManager.showGame();
+            this.uiManager.showGame(null);
             this.animationManager.clear();
-            this.flowController.initGame();
+            this.flowController.initGame('endless');
 
             // 首次游戏显示新手引导，完成后解锁输入
             const tutorial = this.uiManager.tutorialOverlay;
@@ -193,18 +222,76 @@
             }
         }
 
+        /**
+         * 显示关卡选择页面
+         */
+        _showLevelSelect() {
+            this.canvas.classList.remove('gameover');
+            this._gameStarted = false;
+            this.inputManager.lock();
+            this.animationManager.clear();
+            this.uiManager.showLevelSelect();
+        }
+
+        /**
+         * 启动关卡模式指定关卡
+         */
+        _startLevel(levelId) {
+            const config = this.levelManager.getLevelConfig(levelId);
+            if (!config) return;
+            this._gameMode = 'level';
+            this._currentLevelId = levelId;
+            this._gameStarted = true;
+            this.uiManager.showGame(config);
+            this.animationManager.clear();
+            this.flowController.initGame('level', config);
+            this.inputManager.unlock();
+        }
+
+        /**
+         * 下一关
+         */
+        _nextLevel() {
+            const nextId = (this._currentLevelId || 0) + 1;
+            if (nextId <= this.levelManager.getTotalLevels()) {
+                this.canvas.classList.remove('gameover');
+                this.uiManager.resultPopup.hide();
+                this._startLevel(nextId);
+            }
+        }
+
+        /**
+         * 重试当前关
+         */
+        _retryLevel() {
+            this.canvas.classList.remove('gameover');
+            this.uiManager.resultPopup.hide();
+            if (this._currentLevelId) {
+                this._startLevel(this._currentLevelId);
+            }
+        }
+
+        /**
+         * 重新开始（通用，无尽模式用）
+         */
         _restartGame() {
             this.canvas.classList.remove('gameover');
             this.uiManager.resultPopup.hide();
-            this.uiManager.showGame();
-            this.animationManager.clear();
-            this.flowController.restartGame();
-            this.inputManager.unlock();
+            if (this._gameMode === 'level' && this._currentLevelId) {
+                this._startLevel(this._currentLevelId);
+            } else {
+                this.uiManager.showGame(null);
+                this.animationManager.clear();
+                this.flowController.restartGame();
+                this.inputManager.unlock();
+            }
         }
 
         _backToMenu() {
             this.canvas.classList.remove('gameover');
             this._gameStarted = false;
+            this._gameMode = 'endless';
+            this._currentLevelId = null;
             this.inputManager.lock();
             this.animationManager.clear();
             this.uiManager.showMenu();

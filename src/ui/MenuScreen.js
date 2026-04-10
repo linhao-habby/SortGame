@@ -1,15 +1,16 @@
 /**
  * MenuScreen.js - 主菜单
+ * 双按钮：无尽模式 / 关卡模式
  */
 (function() {
     'use strict';
 
     class MenuScreen {
         /**
-         * @param {function} onStart - 开始游戏回调
+         * @param {object} callbacks - { onEndless, onLevel }
          */
-        constructor(onStart) {
-            this.onStart = onStart;
+        constructor(callbacks) {
+            this.callbacks = callbacks || {};
             this.el = null;
         }
 
@@ -20,13 +21,23 @@
                 <div class="menu-content">
                     <h1 class="menu-title">SortGame</h1>
                     <p class="menu-subtitle">色块排序交付</p>
-                    <button class="menu-btn-start">开始游戏</button>
+                    <div class="menu-buttons">
+                        <button class="menu-btn-endless">无尽模式</button>
+                        <button class="menu-btn-level">关卡模式</button>
+                        <button class="menu-btn-leaderboard">排行榜</button>
+                    </div>
                 </div>
             `;
             document.body.appendChild(this.el);
 
-            this.el.querySelector('.menu-btn-start').addEventListener('click', () => {
-                if (this.onStart) this.onStart();
+            this.el.querySelector('.menu-btn-endless').addEventListener('click', () => {
+                if (this.callbacks.onEndless) this.callbacks.onEndless();
+            });
+            this.el.querySelector('.menu-btn-level').addEventListener('click', () => {
+                if (this.callbacks.onLevel) this.callbacks.onLevel();
+            });
+            this.el.querySelector('.menu-btn-leaderboard').addEventListener('click', () => {
+                if (this.callbacks.onLeaderboard) this.callbacks.onLeaderboard();
             });
         }
 

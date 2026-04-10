@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SortGame - 色块排序交付游戏</title>
-    <link rel="stylesheet" href="./styles/main.css?v=5">
+    <link rel="stylesheet" href="./styles/main.css?v=6">
 </head>
 <body>
     <!-- WebGPU 错误提示 -->
@@ -19,40 +19,46 @@
 
     <!-- 脚本加载 -->
     <!-- 工具类 -->
-    <script src="./src/utils/math.js?v=5"></script>
-    <script src="./src/utils/tween.js?v=5"></script>
+    <script src="./src/utils/math.js?v=6"></script>
+    <script src="./src/utils/tween.js?v=6"></script>
 
     <!-- 游戏逻辑 -->
-    <script src="./src/game/GameConfig.js?v=5"></script>
-    <script src="./src/game/Slot.js?v=5"></script>
-    <script src="./src/game/DifficultyManager.js?v=5"></script>
-    <script src="./src/game/OrderManager.js?v=5"></script>
-    <script src="./src/game/GameState.js?v=5"></script>
-    <script src="./src/game/ScoreManager.js?v=5"></script>
-    <script src="./src/game/GameFlowController.js?v=5"></script>
+    <script src="./src/game/GameConfig.js?v=6"></script>
+    <script src="./src/game/Slot.js?v=6"></script>
+    <script src="./src/game/DifficultyManager.js?v=6"></script>
+    <script src="./src/game/OrderManager.js?v=6"></script>
+    <script src="./src/game/GameState.js?v=6"></script>
+    <script src="./src/game/ScoreManager.js?v=6"></script>
+    <script src="./src/game/GameFlowController.js?v=6"></script>
+    <script src="./src/game/LevelManager.js?v=6"></script>
 
     <!-- 渲染 -->
-    <script src="./src/rendering/Geometry.js?v=5"></script>
-    <script src="./src/rendering/shaders.js?v=5"></script>
-    <script src="./src/rendering/Renderer.js?v=5"></script>
-    <script src="./src/rendering/BlockRenderer.js?v=5"></script>
-    <script src="./src/rendering/SlotRenderer.js?v=5"></script>
-    <script src="./src/rendering/AnimationManager.js?v=5"></script>
+    <script src="./src/rendering/Geometry.js?v=6"></script>
+    <script src="./src/rendering/shaders.js?v=6"></script>
+    <script src="./src/rendering/Renderer.js?v=6"></script>
+    <script src="./src/rendering/BlockRenderer.js?v=6"></script>
+    <script src="./src/rendering/SlotRenderer.js?v=6"></script>
+    <script src="./src/rendering/AnimationManager.js?v=6"></script>
 
     <!-- 输入 -->
-    <script src="./src/input/InputManager.js?v=5"></script>
+    <script src="./src/input/InputManager.js?v=6"></script>
+
+    <!-- 服务 -->
+    <script src="./src/services/LeaderboardService.js?v=6"></script>
 
     <!-- UI -->
-    <script src="./src/ui/MenuScreen.js?v=5"></script>
-    <script src="./src/ui/GameHUD.js?v=5"></script>
-    <script src="./src/ui/ResultPopup.js?v=5"></script>
-    <script src="./src/ui/TutorialOverlay.js?v=5"></script>
-    <script src="./src/ui/UIManager.js?v=5"></script>
-    <script src="./src/ui/DebugPanel.js?v=5"></script>
+    <script src="./src/ui/MenuScreen.js?v=6"></script>
+    <script src="./src/ui/LevelSelectScreen.js?v=6"></script>
+    <script src="./src/ui/GameHUD.js?v=6"></script>
+    <script src="./src/ui/ResultPopup.js?v=6"></script>
+    <script src="./src/ui/TutorialOverlay.js?v=6"></script>
+    <script src="./src/ui/LeaderboardPanel.js?v=6"></script>
+    <script src="./src/ui/UIManager.js?v=6"></script>
+    <script src="./src/ui/DebugPanel.js?v=6"></script>
 
     <!-- 核心 -->
-    <script src="./src/core/GameLoop.js?v=5"></script>
-    <script src="./src/core/Game.js?v=5"></script>
+    <script src="./src/core/GameLoop.js?v=6"></script>
+    <script src="./src/core/Game.js?v=6"></script>
 
     <!-- 启动 -->
     <script>

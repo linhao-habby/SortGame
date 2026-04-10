@@ -15,6 +15,7 @@
             this._hpEl = null;
             this._orderEl = null;
             this._scoreEl = null;
+            this._levelConfig = null;  // 关卡配置（null=无尽模式）
         }
 
         create() {
@@ -24,6 +25,7 @@
             this.el.innerHTML = `
                 <div class="hud-top">
                     <div class="hud-top-center">
+                        <div class="hud-level-info" id="ui-level-info" style="display:none"></div>
                         <div class="hud-score-row">
                             <div class="hud-score-num" id="ui-score">0</div>
                             <div class="hud-combo" id="ui-combo"></div>
@@ -34,6 +36,7 @@
                     </div>
                 </div>
                 <div class="hud-orders-float" id="ui-orders-wrap"></div>
+                <div class="hud-level-progress" id="ui-level-progress" style="display:none"></div>
                 <div class="hud-bottom">
                     <button class="btn-restart" id="ui-btn-restart">重来</button>
                 </div>
@@ -46,6 +49,8 @@
             this._orderBoxEls = [];
             this._scoreEl = this.el.querySelector('#ui-score');
             this._comboEl = this.el.querySelector('#ui-combo');
+            this._levelInfoEl = this.el.querySelector('#ui-level-info');
+            this._levelProgressEl = this.el.querySelector('#ui-level-progress');
             this._currentOrderCount = 0;
 
             this.el.querySelector('#ui-btn-restart').addEventListener('click', () => {
@@ -78,19 +83,36 @@
         }
 
         /**
+         * 设置关卡信息（关卡模式时调用）
+         * @param {object|null} levelConfig - null 表示无尽模式
+         */
+        setLevelInfo(levelConfig) {
+            this._levelConfig = levelConfig;
+            if (levelConfig) {
+                this._levelInfoEl.textContent = `第 ${levelConfig.id} 关 \u00B7 ${levelConfig.chapter}`;
+                this._levelInfoEl.style.display = '';
+                this._levelProgressEl.style.display = '';
+            } else {
+                this._levelInfoEl.style.display = 'none';
+                this._levelProgressEl.style.display = 'none';
+            }
+        }
+
+        /**
          * 更新 HUD 显示
          * @param {GameState} gs
          */
         update(gs) {
             if (!this.el) return;
 
-            // HP 红心
+            // HP 红心（关卡模式用关卡 hp，无尽模式用全局 INITIAL_HP）
+            const maxHP = this._levelConfig ? this._levelConfig.hp : GameConfig.INITIAL_HP;
             let hp = '';
-            for (let i = 0; i < GameConfig.INITIAL_HP; i++) {
+            for (let i = 0; i < maxHP; i++) {
                 hp += i < gs.hp ? '\u2764' : '\u2661';
             }
             this._hpEl.textContent = hp;
-            this._hpEl.className = gs.hp <= 3 ? 'hp-hearts hp-low' : 'hp-hearts';
+            this._hpEl.className = gs.hp <= Math.ceil(maxHP / 3) ? 'hp-hearts hp-low' : 'hp-hearts';
 
             // 动态订单（1~3 个）
             const orderCount = gs.orders.length;
@@ -131,6 +153,13 @@
             } else {
                 this._comboEl.innerHTML = '';
                 this._comboEl.className = 'hud-combo';
+            }
+
+            // 关卡进度
+            if (this._levelConfig && this._levelProgressEl) {
+                const target = this._levelConfig.targetOrders;
+                const done = Math.min(gs.completedOrders, target);
+                this._levelProgressEl.textContent = `\u8fdb\u5ea6 ${done}/${target}`;
             }
         }
 

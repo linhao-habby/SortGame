@@ -36,11 +36,16 @@
             // initBlocks: 每个有色块的槽初始放几个，默认 = capacity（填满）
             const blocksPerSlot = params.initBlocks || capacity;
             this.slots = [];
-            this.hp = GameConfig.INITIAL_HP;
+            this.hp = params.hp || GameConfig.INITIAL_HP;
             this.completedOrders = 0;
             this.orders = [];
             this.selectedSlotIndex = null;
             this.status = 'playing';
+            this.score = 0;
+            this.combo = 0;
+            this.comboProgress = 0;
+            this.lastScoreGain = 0;
+            this._rainbowRefillSlots.clear();
 
             for (let i = 0; i < slotCount; i++) {
                 this.slots.push(new Slot(i, capacity, false));

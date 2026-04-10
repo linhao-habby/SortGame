@@ -9,6 +9,28 @@
         constructor() {
             // 上一次应用的难度阶段 index，用于检测阶段切换
             this._lastStageIndex = -1;
+            // 固定模式（关卡模式使用）
+            this._fixedMode = false;
+            this._fixedParams = null;
+        }
+
+        /**
+         * 设置固定参数模式（关卡模式使用）
+         * @param {object} levelConfig - 关卡配置
+         */
+        setFixedParams(levelConfig) {
+            this._fixedMode = true;
+            this._fixedParams = {
+                colorCount: levelConfig.colorCount,
+                slotCount:  levelConfig.slotCount,
+                capacity:   levelConfig.capacity,
+                emptySlots: levelConfig.emptySlots,
+                initBlocks: levelConfig.initBlocks,
+                orderNum:   levelConfig.orderNum,
+                orderRange: levelConfig.orderRange,
+                orderCount: levelConfig.orderRange[0] + Math.floor(Math.random() * (levelConfig.orderRange[1] - levelConfig.orderRange[0] + 1)),
+                label:      levelConfig.chapter,
+            };
         }
 
         /**
@@ -32,6 +54,12 @@
          * @returns {{ colorCount: number, slotCount: number, capacity: number, emptySlots: number, orderCount: number, label: string }}
          */
         getParams(completedOrders) {
+            if (this._fixedMode && this._fixedParams) {
+                // 关卡模式：每次重新随机 orderCount
+                const p = { ...this._fixedParams };
+                p.orderCount = p.orderRange[0] + Math.floor(Math.random() * (p.orderRange[1] - p.orderRange[0] + 1));
+                return p;
+            }
             const stage = GameConfig.getStageByOrders(completedOrders);
             return {
                 colorCount: GameConfig.resolveValue(stage, 'colorCount'),
@@ -51,6 +79,9 @@
          * @returns {{ colorCount: number, slotCount: number, capacity: number, emptySlots: number, orderCount: number }}
          */
         getInitialParams() {
+            if (this._fixedMode && this._fixedParams) {
+                return { ...this._fixedParams };
+            }
             // 初始使用第一阶段的固定值
             const stage = GameConfig.DIFFICULTY_STAGES[0];
             const _v = (field) => stage[field] !== undefined ? stage[field] : (stage[field + 'Range'] ? stage[field + 'Range'][0] : undefined);
@@ -71,6 +102,9 @@
          * @returns {{ needsAdjust: boolean, newStageIndex: number, params: object }}
          */
         checkStageTransition(completedOrders) {
+            if (this._fixedMode) {
+                return { needsAdjust: false, newStageIndex: 0, params: null };
+            }
             const currentIndex = this._getStageIndex(completedOrders);
             if (currentIndex > this._lastStageIndex) {
                 const oldIndex = this._lastStageIndex;
@@ -125,6 +159,9 @@
          * @returns {number}
          */
         getAvailableColorCount(completedOrders) {
+            if (this._fixedMode && this._fixedParams) {
+                return this._fixedParams.colorCount;
+            }
             const stage = GameConfig.getStageByOrders(completedOrders);
             return GameConfig.resolveValue(stage, 'colorCount');
         }
@@ -134,6 +171,8 @@
          */
         reset() {
             this._lastStageIndex = -1;
+            this._fixedMode = false;
+            this._fixedParams = null;
         }
     }
 
