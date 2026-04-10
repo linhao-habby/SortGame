@@ -27,6 +27,7 @@
             BLOCK_TYPE: 'rainbow',          // 彩虹块的 type 标识
             CLEAR_BASE_SCORE: 50,           // 整槽纯色消除基础分
             CLEAR_PER_BLOCK: 5,             // 消除的每个色块额外加分
+            DELIVER_BONUS_THRESHOLD: 5,     // 单次交付 >= 此数量时奖励彩虹块
         },
 
         // ===== 颜色定义 =====
