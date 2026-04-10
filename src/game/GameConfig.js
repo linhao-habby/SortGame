@@ -7,7 +7,7 @@
 
     const GameConfig = {
         // ===== 血量 =====
-        INITIAL_HP: 10,
+        INITIAL_HP: 3,
 
         // ===== 补充模式 =====
         // true: 每完成1个订单就补充（每槽推1个）
@@ -50,12 +50,12 @@
         // 取走总数 = 普通槽数 S - (orderNum - 1)，补充总数始终 = S
         // orderNum=1 时守恒，orderNum>=2 时棋盘色块逐渐堆积，压力递增
         DIFFICULTY_STAGES: [
-            { minOrders: 0,  maxOrders: 5,   colorCount: 2,        slotCount: 3,         capacity: 5,       emptySlots: 1,       initBlocks: 3, orderNum: 1, orderRange: [3, 3],    label: '新手引导' },
-            { minOrders: 6,  maxOrders: 15,  colorCount: 4,        slotCount: 4,         capacity: 5,       emptySlots: 1,       initBlocks: 4, orderNum: 1, orderRange: [3, 4],    label: '入门' },
-            { minOrders: 16, maxOrders: 30,  colorCountRange: [5, 6], slotCountRange: [5, 6], capacity: 5,  emptySlotsRange: [1, 2], initBlocks: 4, orderNum: 2, orderRange: [3, 4], label: '中等' },
-            { minOrders: 31, maxOrders: 50,  colorCountRange: [7, 8], slotCountRange: [6, 7], capacityRange: [5, 6], emptySlotsRange: [1, 2], initBlocks: 5, orderNum: 2, orderRange: [4, 5], label: '进阶' },
-            { minOrders: 51, maxOrders: 80,  colorCountRange: [8, 10], slotCountRange: [7, 8], capacity: 6,  emptySlots: 1,       initBlocks: 5, orderNum: 3, orderRange: [4, 5],    label: '困难' },
-            { minOrders: 81, maxOrders: Infinity, colorCountRange: [10, 12], slotCountRange: [8, 9], capacityRange: [6, 7], emptySlots: 1, initBlocks: 6, orderNum: 3, orderRange: [5, 6], label: '极限' },
+            { minOrders: 0,  maxOrders: 1,        colorCount: 2, slotCount: 3, capacity: 5, emptySlots: 1,                  initBlocks: 3, orderNum: 1, orderRange: [3, 3], label: '新手引导' },
+            { minOrders: 2,  maxOrders: 7,         colorCount: 3, slotCount: 4, capacity: 5, emptySlots: 1,                  orderNum: 1, orderRange: [3, 4], label: '入门' },
+            { minOrders: 8,  maxOrders: 15,        colorCount: 4, slotCount: 5, capacity: 5, emptySlotsRange: [1, 2],         orderNum: 1, orderRange: [3, 4], label: '中等' },
+            { minOrders: 16, maxOrders: 29,        colorCount: 4, slotCount: 6, capacity: 5, emptySlotsRange: [1, 2],         orderNum: 2, orderRange: [4, 5], label: '进阶' },
+            { minOrders: 30, maxOrders: 49,        colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 1,                  orderNum: 2, orderRange: [4, 5], label: '困难' },
+            { minOrders: 50, maxOrders: Infinity,  colorCount: 4, slotCount: 6, capacity: 5, emptySlots: 1,                  orderNum: 2, orderRange: [4, 5], label: '极限' },
         ],
 
         // ===== 动画时长 (ms) =====
