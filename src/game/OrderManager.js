@@ -27,11 +27,14 @@
             orderNum = Math.max(1, Math.min(3, orderNum || 1));
             const totalCount = Math.max(orderNum, normalSlotCount - (orderNum - 1));
 
+            // 获取槽容量上限（单个订单的 count 不能超过容量，否则不可能在一个槽里凑齐）
+            const maxCapacity = slots.length > 0 ? Math.max(...slots.map(s => s.capacity)) : 5;
+
             // 扫描棋盘上所有实际存在的颜色
             const colorStats = this._analyzeBoard(slots);
 
             // 选择 orderNum 种不同颜色并分配数量
-            const assignments = this._pickColors(colorStats, totalCount, orderNum);
+            const assignments = this._pickColors(colorStats, totalCount, orderNum, maxCapacity);
 
             // 安全校验
             const statsMap = {};
@@ -40,8 +43,12 @@
             for (const a of assignments) {
                 const actual = statsMap[a.color] || 0;
                 if (a.count > actual) {
-                    console.warn(`[OrderManager] 安全校验: C${a.color} 需${a.count} 实际${actual}, 修正`);
+                    console.warn(`[OrderManager] 安全校验(数量): C${a.color} 需${a.count} 实际${actual}, 修正`);
                     a.count = actual;
+                }
+                if (a.count > maxCapacity) {
+                    console.warn(`[OrderManager] 安全校验(容量): C${a.color} 需${a.count} 容量${maxCapacity}, 修正`);
+                    a.count = maxCapacity;
                 }
                 logParts.push(`C${a.color}x${a.count}(棋盘${actual})`);
             }
@@ -65,15 +72,14 @@
          * @param {number} orderNum - 订单数量
          * @returns {{ color: number, count: number }[]}
          */
-        _pickColors(colorStats, totalCount, orderNum) {
+        _pickColors(colorStats, totalCount, orderNum, maxCapacity) {
             const available = colorStats.filter(s => s.totalCount >= 1);
 
             if (orderNum === 1) {
-                return this._pickSingleOrder(available, totalCount);
+                return this._pickSingleOrder(available, totalCount, maxCapacity);
             }
 
             // 多订单：贪心选颜色，然后分配数量
-            // 按权重排序所有可用颜色
             const weighted = available.map(s => ({
                 stat: s,
                 weight: this._colorWeight(s) * (this._lastColors.includes(s.color) ? 0.4 : 1),
@@ -95,36 +101,40 @@
 
             // 极端：可用颜色不足 orderNum 种
             if (chosen.length < orderNum) {
-                return this._fallbackMulti(available, totalCount, orderNum);
+                return this._fallbackMulti(available, totalCount, orderNum, maxCapacity);
             }
 
             // 分配数量
-            return this._allocateMulti(chosen, totalCount, orderNum);
+            return this._allocateMulti(chosen, totalCount, orderNum, maxCapacity);
         }
 
         /**
          * 单订单：选一种颜色
+         * count 不能超过 maxCapacity（否则一个槽装不下，无法交付）
          */
-        _pickSingleOrder(available, totalCount) {
-            // 筛选数量足够的颜色
-            let candidates = available.filter(s => s.totalCount >= totalCount);
+        _pickSingleOrder(available, totalCount, maxCapacity) {
+            const capCount = Math.min(totalCount, maxCapacity);
+            let candidates = available.filter(s => s.totalCount >= capCount);
             if (candidates.length === 0) {
                 candidates = available.sort((a, b) => b.totalCount - a.totalCount);
             }
 
-            // 带权重选择
             const chosen = this._weightedPickOne(candidates);
-            const count = Math.min(chosen.totalCount, totalCount);
+            const count = Math.min(chosen.totalCount, capCount);
             return [{ color: chosen.color, count }];
         }
 
         /**
          * 多订单数量分配
-         * 约束：每个 count >= 1，每个 count <= 对应颜色实际数量，所有 count 之和 = totalCount
+         * 约束：每个 count >= 1，每个 count <= min(颜色实际数量, maxCapacity)，总和尽量 = totalCount
          */
-        _allocateMulti(chosen, totalCount, orderNum) {
-            // 先每个分配 1，保证最少值
-            const result = chosen.map(s => ({ color: s.color, count: 1, max: s.totalCount }));
+        _allocateMulti(chosen, totalCount, orderNum, maxCapacity) {
+            // max 取颜色实际数量和槽容量的较小值
+            const result = chosen.map(s => ({
+                color: s.color,
+                count: 1,
+                max: Math.min(s.totalCount, maxCapacity),
+            }));
             let remaining = totalCount - orderNum;
 
             // 随机打乱分配顺序增加变化
@@ -144,7 +154,7 @@
                         distributed = true;
                     }
                 }
-                if (!distributed) break; // 所有颜色都满了
+                if (!distributed) break;
             }
 
             return result.map(r => ({ color: r.color, count: r.count }));
@@ -153,21 +163,20 @@
         /**
          * 兜底：可用颜色不足 orderNum 种
          */
-        _fallbackMulti(available, totalCount, orderNum) {
+        _fallbackMulti(available, totalCount, orderNum, maxCapacity) {
             const sorted = [...available].sort((a, b) => b.totalCount - a.totalCount);
             const actualNum = Math.min(sorted.length, orderNum);
 
             if (actualNum === 0) {
-                // 棋盘空，返回占位订单
                 const result = [];
                 for (let i = 0; i < orderNum; i++) {
-                    result.push({ color: i, count: Math.max(1, Math.floor(totalCount / orderNum)) });
+                    result.push({ color: i, count: Math.min(Math.max(1, Math.floor(totalCount / orderNum)), maxCapacity) });
                 }
                 return result;
             }
 
             const chosen = sorted.slice(0, actualNum);
-            const result = this._allocateMulti(chosen, Math.min(totalCount, chosen.reduce((s, c) => s + c.totalCount, 0)), actualNum);
+            const result = this._allocateMulti(chosen, Math.min(totalCount, chosen.reduce((s, c) => s + c.totalCount, 0)), actualNum, maxCapacity);
 
             // 如果实际选出的颜色 < orderNum，补足空订单
             while (result.length < orderNum) {

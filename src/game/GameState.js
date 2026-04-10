@@ -112,7 +112,10 @@
             if (!source || !target || source.isEmpty()) return { action: 'invalid' };
 
             const topColor = source.topConsecutiveColor();
-            if (!target.canReceive(topColor)) {
+            const topBlock = source.topBlock();
+            const isRainbowBlock = BlockUtils.isRainbow(topBlock);
+
+            if (!target.canReceive(topColor, isRainbowBlock)) {
                 if (!target.isEmpty()) {
                     this.selectedSlotIndex = targetIndex;
                     return { action: 'reselected', data: { slotIndex: targetIndex } };
@@ -138,6 +141,7 @@
 
         /**
          * 检测是否有木槽满足任一活跃订单的交付条件
+         * 彩虹块视为匹配任意订单颜色
          * 优先选择顶部连续同色数量最多的木槽
          * @returns {{ canDeliver: boolean, slotIndex?: number, orderIndex?: number }}
          */
@@ -153,7 +157,10 @@
                 for (let si = 0; si < this.slots.length; si++) {
                     const slot = this.slots[si];
                     if (slot.isEmpty()) continue;
-                    if (slot.topConsecutiveColor() === order.color) {
+                    const slotColor = slot.topConsecutiveColor();
+                    // 颜色匹配：精确匹配，或者该连续段的有效颜色是彩虹(-1)（全是彩虹块）
+                    const colorMatches = (slotColor === order.color) || (slotColor === -1);
+                    if (colorMatches) {
                         const count = slot.topConsecutiveCount();
                         if (count >= order.count && count > bestCount) {
                             bestCount = count;
@@ -200,6 +207,46 @@
          */
         activeOrderCount() {
             return this.orders.filter(o => o.status === 'active').length;
+        }
+
+        // ===== 整槽纯色消除 =====
+
+        /**
+         * 检测是否有木槽满足"整槽纯色"消除条件
+         * 条件：槽已满，且所有色块都是同一普通颜色（不含彩虹块）
+         * @returns {{ canClear: boolean, slotIndex?: number, color?: number, blockCount?: number }}
+         */
+        checkFullSlotClear() {
+            for (let si = 0; si < this.slots.length; si++) {
+                const result = this.slots[si].checkFullSameColor();
+                if (result) {
+                    return {
+                        canClear: true,
+                        slotIndex: si,
+                        color: result.color,
+                        blockCount: this.slots[si].blocks.length,
+                    };
+                }
+            }
+            return { canClear: false };
+        }
+
+        /**
+         * 执行整槽纯色消除：清空该槽所有色块，底部留下一个彩虹块
+         * @param {number} slotIndex
+         * @returns {{ clearedBlocks: object[], rainbowBlock: object, color: number }}
+         */
+        executeFullSlotClear(slotIndex) {
+            const slot = this.slots[slotIndex];
+            const color = slot.blocks[0].color;
+            const blockCount = slot.blocks.length;
+            const clearedBlocks = slot.popBlocks(blockCount);
+
+            // 在底部放入彩虹块
+            const rainbowBlock = { color: -1, type: 'rainbow' };
+            slot.pushBlocks([rainbowBlock]);
+
+            return { clearedBlocks, rainbowBlock, color, blockCount };
         }
 
         // ===== 色块补充 =====
@@ -285,6 +332,7 @@
             for (const slot of this.slots) {
                 const label = ' ';
                 const blocks = slot.blocks.map(b => {
+                    if (BlockUtils.isRainbow(b)) return '🌈';
                     const c = GameConfig.COLORS[b.color];
                     return c ? c.name.charAt(0) : b.color;
                 }).join(' ');

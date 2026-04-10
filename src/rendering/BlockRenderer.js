@@ -16,7 +16,16 @@
             this.instanceData = new Float32Array(MAX_BLOCKS * INSTANCE_FLOATS);
             this.instanceCount = 0;
             this.instanceBuffer = null;
+            this._time = 0; // 累积时间（秒），用于彩虹块动画
             this._createInstanceBuffer();
+        }
+
+        /**
+         * 更新时间（由外部每帧调用）
+         * @param {number} dtMs - 帧间隔（毫秒）
+         */
+        updateTime(dtMs) {
+            this._time += dtMs / 1000;
         }
 
         _createInstanceBuffer() {
@@ -72,9 +81,15 @@
                     // 构建模型矩阵（平移）
                     const model = MathUtils.translation(x, y, z);
 
-                    // 获取颜色
-                    const colorDef = GameConfig.COLORS[block.color];
-                    const rgb = colorDef ? colorDef.rgb : [0.5, 0.5, 0.5];
+                    // 获取颜色（彩虹块使用占位色，shader 中动态计算）
+                    const isRainbowBlock = block.type === 'rainbow';
+                    let rgb;
+                    if (isRainbowBlock) {
+                        rgb = [1.0, 1.0, 1.0]; // 占位色，shader 中会覆盖
+                    } else {
+                        const colorDef = GameConfig.COLORS[block.color];
+                        rgb = colorDef ? colorDef.rgb : [0.5, 0.5, 0.5];
+                    }
 
                     // 写入实例数据
                     const offset = this.instanceCount * INSTANCE_FLOATS;
@@ -85,10 +100,10 @@
                     this.instanceData[offset + 17] = rgb[1];
                     this.instanceData[offset + 18] = rgb[2];
                     this.instanceData[offset + 19] = 1.0;
-                    // flags: x=selected
+                    // flags: x=selected, y=isRainbow, z=time(for rainbow anim)
                     this.instanceData[offset + 20] = selected;
-                    this.instanceData[offset + 21] = 0;
-                    this.instanceData[offset + 22] = 0;
+                    this.instanceData[offset + 21] = isRainbowBlock ? 1 : 0;
+                    this.instanceData[offset + 22] = isRainbowBlock ? this._time : 0;
                     this.instanceData[offset + 23] = 0;
 
                     this.instanceCount++;
@@ -107,13 +122,20 @@
 
         /**
          * 添加一个飞行中的色块实例（动画用）
+         * @param {number} color - 颜色编号，-1 表示彩虹块
          */
         addFlyingBlock(x, y, z, color, selected) {
             if (this.instanceCount >= MAX_BLOCKS) return;
 
+            const isRainbowBlock = (color === -1);
             const model = MathUtils.translation(x, y, z);
-            const colorDef = GameConfig.COLORS[color];
-            const rgb = colorDef ? colorDef.rgb : [0.5, 0.5, 0.5];
+            let rgb;
+            if (isRainbowBlock) {
+                rgb = [1.0, 1.0, 1.0]; // 占位色，shader 中动态计算
+            } else {
+                const colorDef = GameConfig.COLORS[color];
+                rgb = colorDef ? colorDef.rgb : [0.5, 0.5, 0.5];
+            }
 
             const offset = this.instanceCount * INSTANCE_FLOATS;
             this.instanceData.set(model, offset);
@@ -122,8 +144,8 @@
             this.instanceData[offset + 18] = rgb[2];
             this.instanceData[offset + 19] = 1.0;
             this.instanceData[offset + 20] = selected ? 1 : 0;
-            this.instanceData[offset + 21] = 0;
-            this.instanceData[offset + 22] = 0;
+            this.instanceData[offset + 21] = isRainbowBlock ? 1 : 0;
+            this.instanceData[offset + 22] = isRainbowBlock ? this._time : 0;
             this.instanceData[offset + 23] = 0;
 
             this.instanceCount++;

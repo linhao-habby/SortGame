@@ -21,7 +21,7 @@
                 @location(5) modelCol2: vec4<f32>,
                 @location(6) modelCol3: vec4<f32>,
                 @location(7) color: vec4<f32>,
-                @location(8) flags: vec4<f32>,  // x: selected, y: reserved, z: reserved, w: reserved
+                @location(8) flags: vec4<f32>,  // x: selected, y: isRainbow, z: time, w: reserved
             };
 
             struct VertexInput {
@@ -74,11 +74,36 @@
                 @location(3) flags: vec4<f32>,
             };
 
+            // HSV to RGB conversion for rainbow effect
+            fn hsv2rgb(h: f32, s: f32, v: f32) -> vec3<f32> {
+                let c = v * s;
+                let hp = h * 6.0;
+                let x = c * (1.0 - abs(hp % 2.0 - 1.0));
+                let m = v - c;
+                var rgb: vec3<f32>;
+                if (hp < 1.0) { rgb = vec3<f32>(c, x, 0.0); }
+                else if (hp < 2.0) { rgb = vec3<f32>(x, c, 0.0); }
+                else if (hp < 3.0) { rgb = vec3<f32>(0.0, c, x); }
+                else if (hp < 4.0) { rgb = vec3<f32>(0.0, x, c); }
+                else if (hp < 5.0) { rgb = vec3<f32>(x, 0.0, c); }
+                else { rgb = vec3<f32>(c, 0.0, x); }
+                return rgb + vec3<f32>(m, m, m);
+            }
+
             @fragment
             fn main(frag: FragInput) -> @location(0) vec4<f32> {
                 let normal = normalize(frag.worldNormal);
-                let baseColor = frag.baseColor.rgb;
+                var baseColor = frag.baseColor.rgb;
                 let viewDir = normalize(vec3<f32>(0.0, 3.0, 20.0) - frag.worldPos);
+
+                // 彩虹块：使用时间 + 位置驱动的彩虹色
+                let isRainbow = frag.flags.y > 0.5;
+                if (isRainbow) {
+                    let t = frag.flags.z; // 时间（秒）
+                    // 彩虹色：基于时间缓慢旋转色相，加上位置偏移产生流动感
+                    let hue = fract(t * 0.3 + frag.worldPos.y * 0.15 + frag.worldPos.x * 0.1);
+                    baseColor = hsv2rgb(hue, 0.75, 0.95);
+                }
 
                 // === 参考游戏风格光影 ===
 
@@ -125,6 +150,17 @@
                     color = color * 1.25 + vec3<f32>(0.08, 0.08, 0.05);
                     let glow = pow(edgeFactor, 2.5) * 0.4;
                     color = color + vec3<f32>(1.0, 0.9, 0.5) * glow;
+                }
+
+                // 彩虹块边缘光晕
+                if (isRainbow) {
+                    let t = frag.flags.z;
+                    let rainbowGlow = pow(edgeFactor, 2.0) * 0.35;
+                    let glowHue = fract(t * 0.5 + 0.3);
+                    let glowColor = hsv2rgb(glowHue, 0.6, 1.0);
+                    color = color + glowColor * rainbowGlow;
+                    // 轻微的整体提亮
+                    color = color * 1.08 + vec3<f32>(0.03, 0.03, 0.03);
                 }
 
                 return vec4<f32>(clamp(color, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);

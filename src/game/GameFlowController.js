@@ -22,6 +22,8 @@
  *   onScoreGain(scoreResult)                                - 得分事件，含 gain/combo/multiplier
  *   onGameOver(completedOrders, reason)                     - 游戏结束
  *   onNewOrders(orders)                                     - 新订单生成
+ *   onFullSlotClear(slotIndex, color, blockCount) → Promise  - 整槽纯色消除动画
+ *   onRainbowSpawn(slotIndex) → Promise                     - 彩虹块生成动画
  */
 (function() {
     'use strict';
@@ -136,7 +138,10 @@
 
             // 2. 检测交付
             const delivery = this.gameState.checkDelivery();
+            let hadDeliveryOrClear = false;
+
             if (delivery.canDeliver) {
+                hadDeliveryOrClear = true;
                 await this._executeSingleDelivery(delivery.slotIndex, delivery.orderIndex);
 
                 if (GameConfig.REFILL_PER_ORDER) {
@@ -154,8 +159,17 @@
                         await this._executeRefillAndNewRound();
                     }
                 }
-            } else {
-                // 没有交付 → combo 窗口计数
+            }
+
+            // 3. 检测整槽纯色消除（交付之后检测）
+            const clearResult = this.gameState.checkFullSlotClear();
+            if (clearResult.canClear) {
+                hadDeliveryOrClear = true;
+                await this._executeFullSlotClear(clearResult.slotIndex, clearResult.color, clearResult.blockCount);
+            }
+
+            if (!hadDeliveryOrClear) {
+                // 没有交付也没有整槽消除 → combo 窗口计数
                 this.scoreManager.onNoDeliver();
                 this.gameState.combo = this.scoreManager.combo;
                 this.gameState.comboProgress = this.scoreManager.getComboProgress();
@@ -202,6 +216,37 @@
             // 用实际取走数量传给动画（deliveredCount 可能 > order.count）
             const deliverOrder = { ...order, count: result.deliveredCount };
             await this._emitAsync('onDelivery', slotIndex, deliverOrder, slotBlocksBefore);
+
+            this._emit('onHUDUpdate', this.gameState);
+        }
+
+        // ===== 整槽纯色消除 =====
+
+        /**
+         * 执行整槽纯色消除：消除所有色块 → 得分 → 生成彩虹块
+         * @param {number} slotIndex
+         * @param {number} color - 消除的颜色
+         * @param {number} blockCount - 消除的色块数量
+         */
+        async _executeFullSlotClear(slotIndex, color, blockCount) {
+            // 逻辑层执行消除 + 生成彩虹块
+            const result = this.gameState.executeFullSlotClear(slotIndex);
+
+            // 计算得分（走 combo 积分）
+            const scoreResult = this.scoreManager.onFullSlotClear(result.blockCount);
+            this.gameState.score = this.scoreManager.score;
+            this.gameState.combo = this.scoreManager.combo;
+            this.gameState.comboProgress = this.scoreManager.getComboProgress();
+            this.gameState.lastScoreGain = scoreResult.gain;
+
+            this._emit('onScoreGain', scoreResult);
+            this._emit('onHUDUpdate', this.gameState);
+
+            // 播放整槽消除动画（色块飞走）
+            await this._emitAsync('onFullSlotClear', slotIndex, color, result.blockCount);
+
+            // 播放彩虹块生成动画
+            await this._emitAsync('onRainbowSpawn', slotIndex);
 
             this._emit('onHUDUpdate', this.gameState);
         }

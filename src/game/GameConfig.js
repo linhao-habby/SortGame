@@ -22,6 +22,13 @@
             COMBO_WINDOW: 3,          // combo 窗口：N 次移动内触发交付就保持连击
         },
 
+        // ===== 彩虹块（整槽纯色消除奖励）=====
+        RAINBOW: {
+            BLOCK_TYPE: 'rainbow',          // 彩虹块的 type 标识
+            CLEAR_BASE_SCORE: 50,           // 整槽纯色消除基础分
+            CLEAR_PER_BLOCK: 5,             // 消除的每个色块额外加分
+        },
+
         // ===== 颜色定义 =====
         COLORS: [
             { id: 0,  name: '红色', hex: '#FF4444', rgb: [1.0, 0.267, 0.267], stage: 'basic' },
@@ -65,6 +72,8 @@
             HP_FEEDBACK:     300,
             NEW_ORDER:       300,
             GAME_OVER:       500,
+            FULL_SLOT_CLEAR: 400,   // 整槽纯色消除动画时长
+            RAINBOW_SPAWN:   300,   // 彩虹块生成动画时长
         },
 
         // ===== 渲染尺寸（3D 世界坐标）=====

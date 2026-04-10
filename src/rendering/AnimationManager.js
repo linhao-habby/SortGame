@@ -227,6 +227,85 @@
             this._busy = false;
         }
 
+        /**
+         * 播放整槽纯色消除动画（色块向中心收拢后向上飞出消失）
+         */
+        async playFullSlotClearAnimation(slotIndex, color, blockCount, layout) {
+            this._busy = true;
+            const pos = layout.slotPositions[slotIndex];
+            const cellH = GameConfig.RENDER.CELL_HEIGHT;
+            const ANIM = GameConfig.ANIM;
+
+            const promises = [];
+            for (let i = 0; i < blockCount; i++) {
+                const delay = i * 50;
+                const promise = new Promise((resolve) => {
+                    setTimeout(() => {
+                        const startY = pos.y + i * cellH + cellH / 2;
+                        const fb = { x: pos.x, y: startY, z: 0.5, color, scale: 1 };
+                        this.flyingBlocks.push(fb);
+
+                        // 先收拢到槽中心，再向上飞出
+                        const centerY = pos.y + (blockCount / 2) * cellH;
+                        this.tweenManager.add(fb,
+                            { y: startY, scale: 1 },
+                            { y: centerY + 4, scale: 0.1 },
+                            ANIM.FULL_SLOT_CLEAR || 400,
+                            {
+                                easing: Easing.easeInCubic,
+                                onUpdate: (obj, progress) => {
+                                    // 向中心收拢 X
+                                    obj.x = pos.x * (1 - progress * 0.5);
+                                    obj.z = 0.5 + progress * 1.5;
+                                },
+                                onComplete: () => {
+                                    const idx = this.flyingBlocks.indexOf(fb);
+                                    if (idx >= 0) this.flyingBlocks.splice(idx, 1);
+                                    resolve();
+                                },
+                            }
+                        );
+                    }, delay);
+                });
+                promises.push(promise);
+            }
+
+            await Promise.all(promises);
+            await this._wait(100);
+            this._busy = false;
+        }
+
+        /**
+         * 播放彩虹块生成动画（从槽底部弹出闪光出现）
+         */
+        async playRainbowSpawnAnimation(slotIndex, layout) {
+            this._busy = true;
+            const pos = layout.slotPositions[slotIndex];
+            const cellH = GameConfig.RENDER.CELL_HEIGHT;
+            const ANIM = GameConfig.ANIM;
+
+            const fb = { x: pos.x, y: pos.y - cellH * 0.5, z: 0.5, color: -1, scale: 0.1 };
+            this.flyingBlocks.push(fb);
+
+            await new Promise((resolve) => {
+                this.tweenManager.add(fb,
+                    { y: pos.y - cellH * 0.5, scale: 0.1 },
+                    { y: pos.y + cellH / 2, scale: 1.0 },
+                    ANIM.RAINBOW_SPAWN || 300,
+                    {
+                        easing: Easing.easeOutBack,
+                        onComplete: () => {
+                            const idx = this.flyingBlocks.indexOf(fb);
+                            if (idx >= 0) this.flyingBlocks.splice(idx, 1);
+                            resolve();
+                        },
+                    }
+                );
+            });
+
+            this._busy = false;
+        }
+
         update(dtMs) {
             this.tweenManager.update(dtMs);
         }

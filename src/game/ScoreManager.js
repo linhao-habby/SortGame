@@ -49,6 +49,31 @@
         }
 
         /**
+         * 整槽纯色消除 → 计算得分，combo++，重置移动计数
+         * @param {number} blockCount - 消除的色块数量
+         * @returns {{ gain, combo, multiplier }}
+         */
+        onFullSlotClear(blockCount) {
+            const cfg = GameConfig.RAINBOW || {};
+
+            this.movesSinceDeliver = 0;
+            this.combo++;
+            if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+
+            const base = cfg.CLEAR_BASE_SCORE || 50;
+            const perBlock = cfg.CLEAR_PER_BLOCK || 5;
+            const multiplier = 1 + (this.combo - 1) * (GameConfig.SCORE.COMBO_STEP || 0.5);
+            const gain = Math.round((base + blockCount * perBlock) * multiplier);
+
+            this.score += gain;
+            this.lastScoreGain = gain;
+
+            console.log(`[Score] 整槽消除 +${gain} (基础${base} + ${blockCount}块x${perBlock}) x${multiplier.toFixed(1)} combo=${this.combo}`);
+
+            return { gain, base, combo: this.combo, multiplier };
+        }
+
+        /**
          * 移动未触发交付 → 移动计数+1，超过窗口则 combo 重置
          */
         onNoDeliver() {

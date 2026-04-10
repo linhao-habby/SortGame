@@ -159,6 +159,18 @@
                 onNewOrders: (orders) => {
                     // 预留：可用于订单生成动画
                 },
+
+                onFullSlotClear: async (slotIndex, color, blockCount) => {
+                    await this.animationManager.playFullSlotClearAnimation(
+                        slotIndex, color, blockCount, this.layout
+                    );
+                },
+
+                onRainbowSpawn: async (slotIndex) => {
+                    await this.animationManager.playRainbowSpawnAnimation(
+                        slotIndex, this.layout
+                    );
+                },
             });
         }
 
@@ -274,6 +286,9 @@
                 this.renderer.endFrame(commandEncoder, renderPass);
                 return;
             }
+
+            // 更新时间（用于彩虹块动画）
+            this.blockRenderer.updateTime(dtMs);
 
             // 更新渲染数据
             this.blockRenderer.update(this.flowController.gameState, this.layout, null);
