@@ -225,14 +225,11 @@
             const deliverOrder = { ...order, count: result.deliveredCount };
             await this._emitAsync('onDelivery', slotIndex, deliverOrder, slotBlocksBefore);
 
-            // 单次交付达到阈值 → 奖励彩虹块
+            // 单次交付达到阈值 → 标记该槽下次补充时获得彩虹块
             const threshold = (GameConfig.RAINBOW && GameConfig.RAINBOW.DELIVER_BONUS_THRESHOLD) || 5;
             if (result.deliveredCount >= threshold) {
-                const slot = this.gameState.slots[slotIndex];
-                const rainbowBlock = { color: -1, type: 'rainbow' };
-                slot.pushBlocks([rainbowBlock]);
-                console.log(`[Deliver] 交付${result.deliveredCount}个色块 >= ${threshold}，奖励彩虹块 → 槽${slotIndex}`);
-                await this._emitAsync('onRainbowSpawn', slotIndex);
+                this.gameState.markRainbowRefill(slotIndex);
+                console.log(`[Deliver] 交付${result.deliveredCount}个 >= ${threshold}，槽${slotIndex}下次补充将获得彩虹块`);
             }
 
             this._emit('onHUDUpdate', this.gameState);
@@ -275,9 +272,6 @@
 
             // 播放整槽消除动画（色块飞走）
             await this._emitAsync('onFullSlotClear', slotIndex, color, result.blockCount);
-
-            // 播放彩虹块生成动画
-            await this._emitAsync('onRainbowSpawn', slotIndex);
 
             this._emit('onHUDUpdate', this.gameState);
         }

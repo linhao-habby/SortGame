@@ -19,6 +19,7 @@
             this.combo = 0;
             this.comboProgress = 0;
             this.lastScoreGain = 0;
+            this._rainbowRefillSlots = new Set(); // 下次补充时用彩虹块替代的槽 ID
         }
 
         /**
@@ -235,9 +236,9 @@
         }
 
         /**
-         * 执行整槽纯色消除：清空该槽所有色块，底部留下一个彩虹块
+         * 执行整槽纯色消除：清空该槽所有色块，标记下次补充时获得彩虹块
          * @param {number} slotIndex
-         * @returns {{ clearedBlocks: object[], rainbowBlock: object, color: number }}
+         * @returns {{ clearedBlocks: object[], color: number, blockCount: number }}
          */
         executeFullSlotClear(slotIndex) {
             const slot = this.slots[slotIndex];
@@ -245,11 +246,17 @@
             const blockCount = slot.blocks.length;
             const clearedBlocks = slot.popBlocks(blockCount);
 
-            // 在底部放入彩虹块
-            const rainbowBlock = { color: -1, type: 'rainbow' };
-            slot.pushBlocks([rainbowBlock]);
+            // 标记下次补充时该槽获得彩虹块
+            this._rainbowRefillSlots.add(slotIndex);
 
-            return { clearedBlocks, rainbowBlock, color, blockCount };
+            return { clearedBlocks, color, blockCount };
+        }
+
+        /**
+         * 标记某个槽下次补充时获得彩虹块（替代普通色块）
+         */
+        markRainbowRefill(slotIndex) {
+            this._rainbowRefillSlots.add(slotIndex);
         }
 
         // ===== 色块补充 =====
@@ -259,8 +266,14 @@
             const overflowData = [];
 
             for (const slot of this.slots) {
-                const newColor = Math.floor(Math.random() * availableColorCount);
-                const newBlock = { color: newColor };
+                let newBlock;
+                if (this._rainbowRefillSlots.has(slot.id)) {
+                    // 该槽被标记：推入彩虹块替代普通色块
+                    newBlock = { color: -1, type: 'rainbow' };
+                } else {
+                    const newColor = Math.floor(Math.random() * availableColorCount);
+                    newBlock = { color: newColor };
+                }
                 const overflow = slot.pushFromBottom(newBlock);
 
                 refillData.push({ slotIndex: slot.id, newBlock });
@@ -268,6 +281,9 @@
                     overflowData.push({ slotIndex: slot.id, block: overflow });
                 }
             }
+
+            // 清除标记（已消费）
+            this._rainbowRefillSlots.clear();
 
             const totalOverflow = overflowData.length;
             this.hp = Math.max(0, this.hp - totalOverflow);
