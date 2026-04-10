@@ -50,18 +50,42 @@
         }
 
         /**
-         * 获取顶部连续同色块数量（彩虹块视为与相邻色块同色）
+         * 获取顶部连续同色块数量（彩虹块视为万能色）
          * 
-         * 规则：从顶部往下遍历，只要两个相邻色块"兼容"就继续计数。
-         * 彩虹块与任何色块兼容。
+         * 规则：
+         * 1. 从顶部开始，确定连续段的"有效颜色"：
+         *    - 如果顶部是普通色块，有效颜色 = 该颜色
+         *    - 如果顶部是彩虹块，往下找第一个普通色块作为有效颜色
+         *    - 如果全是彩虹块，有效颜色 = -1（彩虹组）
+         * 2. 从顶部往下计数：彩虹块或与有效颜色相同的普通色块都算在内
+         * 3. 遇到不匹配的普通色块时停止
+         * 
+         * 这确保 [Red, Rainbow, Blue] 不会被当作一个整体（有效色=Red，Blue不匹配会停止）
          * 
          * @returns {number}
          */
         topConsecutiveCount() {
             if (this.blocks.length === 0) return 0;
-            let count = 1;
-            for (let i = this.blocks.length - 2; i >= 0; i--) {
-                if (colorsMatch(this.blocks[i], this.blocks[i + 1])) {
+
+            // 先确定有效颜色（从顶部往下第一个非彩虹块）
+            let effectiveColor = -1;
+            for (let i = this.blocks.length - 1; i >= 0; i--) {
+                if (!isRainbow(this.blocks[i])) {
+                    effectiveColor = this.blocks[i].color;
+                    break;
+                }
+            }
+
+            let count = 0;
+            for (let i = this.blocks.length - 1; i >= 0; i--) {
+                const block = this.blocks[i];
+                if (isRainbow(block)) {
+                    // 彩虹块始终算在连续段内
+                    count++;
+                } else if (effectiveColor === -1) {
+                    // 全彩虹段，遇到普通色块就停
+                    break;
+                } else if (block.color === effectiveColor) {
                     count++;
                 } else {
                     break;
@@ -72,16 +96,15 @@
 
         /**
          * 获取顶部连续同色块的"有效颜色"
-         * 从顶部往下找到第一个非彩虹块的颜色作为有效颜色。
+         * 在连续段范围内，找第一个非彩虹块的颜色。
          * 如果全是彩虹块，返回 -1。
          * 
-         * @returns {number | null}  颜色编号，空槽返回 null
+         * @returns {number | null}  颜色编号，空槽返回 null，全彩虹返回 -1
          */
         topConsecutiveColor() {
             if (this.blocks.length === 0) return null;
-            const count = this.topConsecutiveCount();
-            // 在连续段中找第一个非彩虹块的颜色
-            for (let i = this.blocks.length - 1; i >= this.blocks.length - count; i--) {
+            // 从顶部往下找第一个非彩虹块
+            for (let i = this.blocks.length - 1; i >= 0; i--) {
                 if (!isRainbow(this.blocks[i])) {
                     return this.blocks[i].color;
                 }

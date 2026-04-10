@@ -40,6 +40,7 @@
                 emptySlots: GameConfig.resolveValue(stage, 'emptySlots'),
                 initBlocks: GameConfig.resolveValue(stage, 'initBlocks'),
                 orderNum:   stage.orderNum || 1,
+                orderRange: stage.orderRange || [1, 5],
                 orderCount: stage.orderRange[0] + Math.floor(Math.random() * (stage.orderRange[1] - stage.orderRange[0] + 1)),
                 label:      stage.label,
             };

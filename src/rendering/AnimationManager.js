@@ -23,7 +23,7 @@
          */
         async playMoveAnimation(moveData, layout, context) {
             this._busy = true;
-            const { sourceIndex, targetIndex, moveCount, color } = moveData;
+            const { sourceIndex, targetIndex, moveCount, color, movedBlocks } = moveData;
             const srcPos = layout.slotPositions[sourceIndex];
             const tgtPos = layout.slotPositions[targetIndex];
             const cellH = GameConfig.RENDER.CELL_HEIGHT;
@@ -47,9 +47,15 @@
                 const endX = tgtPos.x;
                 const endY = tgtPos.y + (tgtTopBefore + i) * cellH + cellH / 2;
 
+                // 每个色块使用自己的实际颜色（彩虹块用 -1）
+                // movedBlocks 经 reverse 后：[0]=组底, [last]=组顶
+                // 动画 i=0 是最顶的（先飞出），对应 movedBlocks[moveCount-1-i]
+                const blockIdx = moveCount - 1 - i;
+                const blockColor = (movedBlocks && movedBlocks[blockIdx]) ? movedBlocks[blockIdx].color : color;
+
                 const promise = new Promise((resolve) => {
                     setTimeout(() => {
-                        const fb = { x: startX, y: startY, z: 0.5, color, scale: 1 };
+                        const fb = { x: startX, y: startY, z: 0.5, color: blockColor, scale: 1 };
                         this.flyingBlocks.push(fb);
 
                         // 阶段1：弹出到飞行高度

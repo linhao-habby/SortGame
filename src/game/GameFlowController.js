@@ -92,12 +92,14 @@
             const normalCount = this.gameState.getNormalSlotCount();
             const params = this.difficultyManager.getParams(this.gameState.completedOrders);
             const orderNum = params.orderNum || 1;
+            const orderRange = params.orderRange || null;
             this.gameState.orders = this.orderManager.generateOrders(
                 this.gameState.slots,
                 this.gameState.completedOrders,
                 this.difficultyManager,
                 normalCount,
-                orderNum
+                orderNum,
+                orderRange
             );
             this._emit('onNewOrders', this.gameState.orders);
         }
@@ -149,7 +151,10 @@
                     const gameOver = await this._executeRefill();
                     if (gameOver) return true;
 
-                    // 所有订单完成 → 生成新订单（不再补充）
+                    // 补充后检测整槽纯色消除（补充可能填满某槽）
+                    await this._checkAndExecuteFullSlotClear();
+
+                    // 所有订单完成 → 生成新订单（此时棋盘是消除后的真实状态）
                     if (this.gameState.allOrdersCompleted()) {
                         await this._executeNewRound();
                     }
@@ -161,11 +166,9 @@
                 }
             }
 
-            // 3. 检测整槽纯色消除（交付之后检测）
-            const clearResult = this.gameState.checkFullSlotClear();
-            if (clearResult.canClear) {
+            // 3. 检测整槽纯色消除（移动本身可能填满某槽）
+            if (await this._checkAndExecuteFullSlotClear()) {
                 hadDeliveryOrClear = true;
-                await this._executeFullSlotClear(clearResult.slotIndex, clearResult.color, clearResult.blockCount);
             }
 
             if (!hadDeliveryOrClear) {
@@ -221,6 +224,19 @@
         }
 
         // ===== 整槽纯色消除 =====
+
+        /**
+         * 检测并执行整槽纯色消除（可在多个时机调用）
+         * @returns {boolean} 是否发生了消除
+         */
+        async _checkAndExecuteFullSlotClear() {
+            const clearResult = this.gameState.checkFullSlotClear();
+            if (clearResult.canClear) {
+                await this._executeFullSlotClear(clearResult.slotIndex, clearResult.color, clearResult.blockCount);
+                return true;
+            }
+            return false;
+        }
 
         /**
          * 执行整槽纯色消除：消除所有色块 → 得分 → 生成彩虹块
@@ -297,6 +313,10 @@
         async _executeRefillAndNewRound() {
             const gameOver = await this._executeRefill();
             if (gameOver) return;
+
+            // 补充后检测整槽纯色消除（补充可能填满某槽）
+            await this._checkAndExecuteFullSlotClear();
+
             await this._executeNewRound();
         }
 
