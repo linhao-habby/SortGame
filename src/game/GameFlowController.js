@@ -139,31 +139,32 @@
                 // 1. 等待移动动画
                 await this._emitAsync('onMoveExecuted', result.data, moveContext);
 
-                // 2. 检测交付
+                // 2. 检测交付（一次移动可能同时满足多个订单）
                 const delivery = this.gameState.checkDelivery();
                 let hadDeliveryOrClear = false;
 
                 if (delivery.canDeliver) {
                     hadDeliveryOrClear = true;
-                    await this._executeSingleDelivery(delivery.slotIndex, delivery.orderIndex);
 
-                    if (GameConfig.REFILL_PER_ORDER) {
-                        // 模式：每完成1个订单就补充
+                    // 依次执行所有可交付的订单（动画串行播放）
+                    for (const d of delivery.deliveries) {
+                        await this._executeSingleDelivery(d.slotIndex, d.orderIndex);
+                    }
+
+                    // 所有交付完成后，只补充一次
+                    if (this.gameState.allOrdersCompleted()) {
+                        // 所有订单完成 → 补充 + 新一轮
                         const gameOver = await this._executeRefill();
                         if (gameOver) return true;
 
-                        // 补充后检测整槽纯色消除（补充可能填满某槽）
                         await this._checkAndExecuteFullSlotClear();
+                        await this._executeNewRound();
+                    } else if (GameConfig.REFILL_PER_ORDER) {
+                        // 还有未完成订单但需要补充 → 补充一次
+                        const gameOver = await this._executeRefill();
+                        if (gameOver) return true;
 
-                        // 所有订单完成 → 生成新订单（此时棋盘是消除后的真实状态）
-                        if (this.gameState.allOrdersCompleted()) {
-                            await this._executeNewRound();
-                        }
-                    } else {
-                        // 模式：所有订单完成后一次性补充
-                        if (this.gameState.allOrdersCompleted()) {
-                            await this._executeRefillAndNewRound();
-                        }
+                        await this._checkAndExecuteFullSlotClear();
                     }
                 }
 

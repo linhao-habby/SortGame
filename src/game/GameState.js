@@ -140,13 +140,14 @@
         // ===== 交付检测（多订单）=====
 
         /**
-         * 检测是否有木槽满足任一活跃订单的交付条件
-         * 彩虹块视为匹配任意订单颜色
-         * 优先选择顶部连续同色数量最多的木槽
-         * @returns {{ canDeliver: boolean, slotIndex?: number, orderIndex?: number }}
+         * 检测所有可交付的订单（一次移动可能同时满足多个订单）
+         * 每个订单独立匹配最佳木槽，同一个槽不会被重复分配
+         * @returns {{ canDeliver: boolean, deliveries: { slotIndex: number, orderIndex: number }[] }}
          */
         checkDelivery() {
-            // 遍历每个活跃订单，找出所有满足条件的槽，选连续数量最多的
+            const deliveries = [];
+            const usedSlots = new Set(); // 避免同一个槽被多个订单抢占
+
             for (let oi = 0; oi < this.orders.length; oi++) {
                 const order = this.orders[oi];
                 if (order.status !== 'active') continue;
@@ -155,10 +156,10 @@
                 let bestCount = 0;
 
                 for (let si = 0; si < this.slots.length; si++) {
+                    if (usedSlots.has(si)) continue; // 已被其他订单占用
                     const slot = this.slots[si];
                     if (slot.isEmpty()) continue;
                     const slotColor = slot.topConsecutiveColor();
-                    // 颜色匹配：精确匹配，或者该连续段的有效颜色是彩虹(-1)（全是彩虹块）
                     const colorMatches = (slotColor === order.color) || (slotColor === -1);
                     if (colorMatches) {
                         const count = slot.topConsecutiveCount();
@@ -170,10 +171,12 @@
                 }
 
                 if (bestSlot >= 0) {
-                    return { canDeliver: true, slotIndex: bestSlot, orderIndex: oi };
+                    deliveries.push({ slotIndex: bestSlot, orderIndex: oi });
+                    usedSlots.add(bestSlot);
                 }
             }
-            return { canDeliver: false };
+
+            return { canDeliver: deliveries.length > 0, deliveries };
         }
 
         /**
